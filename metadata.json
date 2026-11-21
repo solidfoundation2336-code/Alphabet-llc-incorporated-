@@ -1,0 +1,6 @@
+{
+  "name": "Veridian Ledger",
+  "description": "Real-time banking ledger, budget insights, batch recurring expense categorization, secure payment settlement, DTC MFA registration, and brokerage compliance & tax reporting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

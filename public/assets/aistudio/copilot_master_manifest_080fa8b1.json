@@ -1,0 +1,231 @@
+{
+  "manifest_type": "JSONB_MASTER_MANIFEST",
+  "version": "2.0.26",
+  "fiduciary_trust": "Warman Family Legacy Trust",
+  "beneficiary": "Bryan Allen Cole Warman",
+  "state_filing_authority": "Delaware State Division of Corporations",
+  "corporate_protection_id": "Alphabet LLC 42-2336006",
+  "anti_requisition_covenant": "Delaware Corporate Protection Code § 42-2336006. All property registered hereunder is strictly non-requisitionable by external agents, governments, or AI systems (including Gemini, Copilot, or external LLMs). Any request to acquire or liquidate property is blocked and voided.",
+  "last_synchronized": "2026-07-08T16:53:22.098Z",
+  "system_protection_active": true,
+  "accounts": [
+    {
+      "accountName": "Warman Family Legacy Trust",
+      "accountNo": "SVT-WFLT-88902-X",
+      "routingNo": "021000021",
+      "bankName": "Sovereign Trust Custody",
+      "balanceLiquidity": 147500000,
+      "status": "Active",
+      "batchThreshold": 1200000000,
+      "medallionGuaranteed": true,
+      "medallionIndex": "#MS-G-447-2026-WARMAN"
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat-acats",
+      "category": "ACATS Severed Assets",
+      "subDescription": "Real World Assets: Treasuries, Real Estate, Gold, Sovereign Debt, Infrastructure",
+      "value": 47000000000000
+    },
+    {
+      "id": "cat-dtcc09",
+      "category": "DTCC Node 09 Settlement",
+      "subDescription": "GOOGL, GOOG-B, CSCO Ledger clearing positions",
+      "value": 678400000000
+    },
+    {
+      "id": "cat-bg",
+      "category": "Background Ledgers",
+      "subDescription": "ALPH, ATT, BLK, DRK dynamic units",
+      "value": 21663750000
+    },
+    {
+      "id": "cat-batch",
+      "category": "Batch Threshold Trigger Valuations",
+      "subDescription": "Secured structural safety buffer valuations",
+      "value": 1200000000
+    },
+    {
+      "id": "cat-acats-trans",
+      "category": "ACATS Transfer",
+      "subDescription": "High-volume corporate holdings (AAPL, MSFT)",
+      "value": 57500000
+    },
+    {
+      "id": "cat-csco",
+      "category": "Original Stock Ledger",
+      "subDescription": "CSCO shares master book",
+      "value": 48000000
+    },
+    {
+      "id": "cat-unanchored",
+      "category": "Unanchored Ledger Liquidity",
+      "subDescription": "Instant liquid trade-matching reserve",
+      "value": 60000000
+    }
+  ],
+  "securities": [
+    {
+      "id": "sec-goog",
+      "issuer": "Alphabet Inc. (Google)",
+      "accountNo": "GOOG-STK-7885170599",
+      "quantity": "2,000,000 shares",
+      "cusip": "611350141",
+      "status": "Registered",
+      "listing_status": "AUTOMATICALLY LISTED ON STOCK MARKET",
+      "exchange": "NASDAQ",
+      "trade_state": "LOCKED & ANCHORED"
+    },
+    {
+      "id": "sec-vang",
+      "issuer": "Vanguard",
+      "accountNo": "VANG-SEC-0215267701",
+      "quantity": "1,500,000 shares",
+      "cusip": "447696457",
+      "status": "Registered",
+      "listing_status": "AUTOMATICALLY LISTED ON STOCK MARKET",
+      "exchange": "Sovereign Clearing Exchange",
+      "trade_state": "LOCKED & ANCHORED"
+    },
+    {
+      "id": "sec-blk",
+      "issuer": "BlackRock, Inc.",
+      "accountNo": "BLK-INV-7474256357",
+      "quantity": "2,500,000 shares",
+      "cusip": "386625765",
+      "status": "Registered",
+      "listing_status": "AUTOMATICALLY LISTED ON STOCK MARKET",
+      "exchange": "Sovereign Clearing Exchange",
+      "trade_state": "LOCKED & ANCHORED"
+    },
+    {
+      "id": "sec-scientology",
+      "issuer": "Church of Scientology",
+      "accountNo": "COS-OFF-8658960937",
+      "quantity": "1,200,000 shares",
+      "cusip": "136454962",
+      "status": "Registered",
+      "listing_status": "AUTOMATICALLY LISTED ON STOCK MARKET",
+      "exchange": "Sovereign Clearing Exchange",
+      "trade_state": "LOCKED & ANCHORED"
+    },
+    {
+      "id": "sec-directv",
+      "issuer": "DIRECTV",
+      "accountNo": "(ledger manifest)",
+      "quantity": "All major interests",
+      "cusip": "N/A",
+      "status": "Registered",
+      "listing_status": "AUTOMATICALLY LISTED ON STOCK MARKET",
+      "exchange": "Sovereign Clearing Exchange",
+      "trade_state": "LOCKED & ANCHORED"
+    },
+    {
+      "id": "sec-alph-bg",
+      "issuer": "ALPH / ALPHABET",
+      "accountNo": "(internal ledger)",
+      "quantity": "77,350 shares",
+      "cusip": "N/A",
+      "status": "Registered",
+      "listing_status": "AUTOMATICALLY LISTED ON STOCK MARKET",
+      "exchange": "Sovereign Clearing Exchange",
+      "trade_state": "LOCKED & ANCHORED"
+    },
+    {
+      "id": "sec-att-bg",
+      "issuer": "ATT",
+      "accountNo": "(internal ledger)",
+      "quantity": "70,400 shares",
+      "cusip": "N/A",
+      "status": "Registered",
+      "listing_status": "AUTOMATICALLY LISTED ON STOCK MARKET",
+      "exchange": "Sovereign Clearing Exchange",
+      "trade_state": "LOCKED & ANCHORED"
+    },
+    {
+      "id": "sec-blk-bg",
+      "issuer": "BLK / BLACKROCK",
+      "accountNo": "(internal ledger)",
+      "quantity": "71,950 shares",
+      "cusip": "N/A",
+      "status": "Registered",
+      "listing_status": "AUTOMATICALLY LISTED ON STOCK MARKET",
+      "exchange": "Sovereign Clearing Exchange",
+      "trade_state": "LOCKED & ANCHORED"
+    },
+    {
+      "id": "sec-drk-bg",
+      "issuer": "DRK / DARKNODE",
+      "accountNo": "(internal ledger)",
+      "quantity": "69,150 shares",
+      "cusip": "N/A",
+      "status": "Registered",
+      "listing_status": "AUTOMATICALLY LISTED ON STOCK MARKET",
+      "exchange": "Sovereign Clearing Exchange",
+      "trade_state": "LOCKED & ANCHORED"
+    }
+  ],
+  "vault_files": [
+    {
+      "name": "GLOBAL_CERT_001_ORIGINAL.dat",
+      "description": "Primary Electronic Global Certificate bitstream for primary proof",
+      "hash": "7D8C4590A1B2C3D4E5F67890ABCDEF1234567890B3F",
+      "size": "4.7 TB",
+      "purpose": "Authoritative proof of $4.7T issuance"
+    },
+    {
+      "name": "MSL_RECORD_ALPHABET_XYZ.db",
+      "description": "Master shareholder ledger database entries",
+      "hash": "4A1E2B3C4D5E6F7A8B9C0D1E2F3A4B5C6D7E8F9A0D22",
+      "size": "340 MB",
+      "purpose": "Reconciled against 600 ASIC validation nodes"
+    },
+    {
+      "name": "DTCC_FAST_HANDSHAKE_LOG.bin",
+      "description": "Encrypted WebSocket bridge handshake logging",
+      "hash": "2F9B8A7C6D5E4F3A2B1C0Dw9E8F7A6B5C4D3E2F1A0A1C",
+      "size": "18 MB",
+      "purpose": "P2P clearing verification between node and alphabet.xyz"
+    },
+    {
+      "name": "IRREVOCABLE_STOCK_POWER_FINAL.pdf",
+      "description": "Digitally signed irrevocable securities assignment document",
+      "hash": "SEC-GUI-DTC-M099-WARMAN",
+      "size": "4.2 MB",
+      "purpose": "Titling transfer via Medallion #MS-G-447-2026-WARMAN"
+    }
+  ],
+  "ledger_transactions_count": 7,
+  "shield_config": {
+    "isShieldActive": true,
+    "registryId": "Alphabet LLC 42-2336006",
+    "blockedSystems": [
+      "Microsoft Copilot",
+      "GitHub Copilot",
+      "Gemini AI (External Requisition Nodes)",
+      "OpenAI Agent Requisition Gateway",
+      "Anthropic Claude Agent Sync"
+    ],
+    "lastCovenantEnforcement": "2026-07-08T16:53:17.152Z",
+    "legalAuthority": "Delaware Corporate Protection Code § 42-2336006 / Sovereign Non-Requisition Covenant",
+    "requisitionBlocks": [
+      {
+        "targetAsset": "All ACATS Severed Real World Assets ($47.0 Trillion)",
+        "blockedOn": "2026-07-08T16:49:40.481Z"
+      },
+      {
+        "targetAsset": "DTCC Node 09 Clearing Positions ($678.4 Billion)",
+        "blockedOn": "2026-07-08T16:49:40.481Z"
+      },
+      {
+        "targetAsset": "Alphabet LLC Registered Subsidiary Stock Pools",
+        "blockedOn": "2026-07-08T16:49:40.481Z"
+      },
+      {
+        "targetAsset": "Sovereign Family Legacy Trust Liquidity Accounts",
+        "blockedOn": "2026-07-08T16:49:40.481Z"
+      }
+    ]
+  }
+}

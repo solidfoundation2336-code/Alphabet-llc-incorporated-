@@ -1,0 +1,1060 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Global Hardened Primitives ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(ownerId) {
+      return isSignedIn() && ownerId == request.auth.uid;
+    }
+
+    function isValidTimestampCreate() {
+      return incoming().createdAt is timestamp
+        && incoming().updatedAt is timestamp
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+    }
+
+    function isValidTimestampUpdate() {
+      return incoming().createdAt is timestamp
+        && incoming().updatedAt is timestamp
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+    }
+
+    // --- Validation Blueprints ---
+
+    function isValidUserWorkspace(data) {
+      return data.keys().hasAll(['ownerId', 'displayName', 'mfaEnrolled', 'preferredCurrency', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'displayName', 'mfaEnrolled', 'preferredCurrency', 'purchasesAccountId', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+        && data.mfaEnrolled is bool
+        && data.preferredCurrency is string && data.preferredCurrency in ['USD', 'EUR', 'GBP']
+        && (!('purchasesAccountId' in data) || (data.purchasesAccountId is string && (data.purchasesAccountId == '' || isValidId(data.purchasesAccountId))))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserPrivateProfile(data) {
+      return data.keys().hasAll(['ownerId', 'email', 'phone', 'legalAddress', 'taxIdLast4', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'email', 'phone', 'legalAddress', 'taxIdLast4', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && data.phone is string && data.phone.size() >= 4 && data.phone.size() <= 32
+        && data.legalAddress is string && data.legalAddress.size() >= 4 && data.legalAddress.size() <= 240
+        && data.taxIdLast4 is string && data.taxIdLast4.size() == 4 && data.taxIdLast4.matches('^[0-9]{4}$')
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAccountRecoveryConfig(data) {
+      return data.keys().hasAll(['ownerId', 'recoveryEmail', 'recoveryPhone', 'trustedContactName', 'trustedContactEmail', 'hardwareKeyLabel', 'backupCodesRemaining', 'recoveryCodeBatchId', 'timeLockHours', 'dualControlRequired', 'recoveryStatus', 'lastDrillAt', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'recoveryEmail', 'recoveryPhone', 'trustedContactName', 'trustedContactEmail', 'hardwareKeyLabel', 'backupCodesRemaining', 'recoveryCodeBatchId', 'timeLockHours', 'dualControlRequired', 'recoveryStatus', 'lastDrillAt', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.recoveryEmail is string && data.recoveryEmail.size() >= 3 && data.recoveryEmail.size() <= 200
+        && data.recoveryPhone is string && data.recoveryPhone.size() >= 4 && data.recoveryPhone.size() <= 32
+        && data.trustedContactName is string && data.trustedContactName.size() >= 2 && data.trustedContactName.size() <= 120
+        && data.trustedContactEmail is string && data.trustedContactEmail.size() >= 3 && data.trustedContactEmail.size() <= 200
+        && data.hardwareKeyLabel is string && data.hardwareKeyLabel.size() >= 2 && data.hardwareKeyLabel.size() <= 100
+        && data.backupCodesRemaining is int && data.backupCodesRemaining >= 0 && data.backupCodesRemaining <= 16
+        && data.recoveryCodeBatchId is string && isValidId(data.recoveryCodeBatchId) && data.recoveryCodeBatchId.size() >= 4 && data.recoveryCodeBatchId.size() <= 64
+        && data.timeLockHours is int && data.timeLockHours in [24, 48, 72]
+        && data.dualControlRequired is bool
+        && data.recoveryStatus is string && data.recoveryStatus in ['configured', 'drill_verified', 'recovery_hold']
+        && data.lastDrillAt is string && data.lastDrillAt.size() >= 10 && data.lastDrillAt.size() <= 40
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPrivateSubdoc(docId, data) {
+      return (docId == 'profile' && isValidUserPrivateProfile(data))
+        || (docId == 'recovery' && isValidAccountRecoveryConfig(data));
+    }
+
+    function isValidBankAccount(data) {
+      return data.keys().hasAll(['ownerId', 'accountName', 'institutionName', 'accountType', 'accountMask', 'currency', 'balance', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'accountName', 'institutionName', 'accountType', 'accountMask', 'currency', 'balance', 'status', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.accountName is string && data.accountName.size() >= 2 && data.accountName.size() <= 100
+        && data.institutionName is string && data.institutionName.size() >= 2 && data.institutionName.size() <= 100
+        && data.accountType is string && data.accountType in ['checking', 'savings', 'treasury', 'settlement', 'purchases', 'company', 'public']
+        && data.accountMask is string && data.accountMask.size() == 4 && data.accountMask.matches('^[0-9]{4}$')
+        && data.currency is string && data.currency in ['USD', 'EUR', 'GBP']
+        && (data.balance is int || data.balance is float) && data.balance >= -10000000 && data.balance <= 1000000000
+        && data.status is string && data.status in ['active', 'frozen', 'closed']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['ownerId', 'accountId', 'merchant', 'description', 'amount', 'direction', 'category', 'isRecurring', 'recurrenceCadence', 'batchId', 'status', 'occurredAt', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'accountId', 'merchant', 'description', 'amount', 'direction', 'category', 'isRecurring', 'recurrenceCadence', 'batchId', 'status', 'occurredAt', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.accountId is string && isValidId(data.accountId)
+        && data.merchant is string && data.merchant.size() >= 1 && data.merchant.size() <= 120
+        && data.description is string && data.description.size() >= 1 && data.description.size() <= 240
+        && (data.amount is int || data.amount is float) && data.amount > 0 && data.amount <= 100000000
+        && data.direction is string && data.direction in ['debit', 'credit']
+        && data.category is string && data.category.size() >= 2 && data.category.size() <= 60
+        && data.isRecurring is bool
+        && data.recurrenceCadence is string && data.recurrenceCadence in ['none', 'weekly', 'monthly', 'quarterly', 'annual']
+        && data.batchId is string && data.batchId.size() <= 128
+        && data.status is string && data.status in ['posted', 'pending', 'flagged']
+        && data.occurredAt is string && data.occurredAt.size() >= 10 && data.occurredAt.size() <= 40
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBudget(data) {
+      return data.keys().hasAll(['ownerId', 'category', 'monthlyLimit', 'warningThresholdPct', 'criticalThresholdPct', 'alertsEnabled', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'category', 'monthlyLimit', 'warningThresholdPct', 'criticalThresholdPct', 'alertsEnabled', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.category is string && data.category.size() >= 2 && data.category.size() <= 60
+        && (data.monthlyLimit is int || data.monthlyLimit is float) && data.monthlyLimit > 0 && data.monthlyLimit <= 100000000
+        && (data.warningThresholdPct is int || data.warningThresholdPct is float) && data.warningThresholdPct >= 10 && data.warningThresholdPct <= 100
+        && (data.criticalThresholdPct is int || data.criticalThresholdPct is float) && data.criticalThresholdPct >= data.warningThresholdPct && data.criticalThresholdPct <= 150
+        && data.alertsEnabled is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBatchJob(data) {
+      return data.keys().hasAll(['ownerId', 'batchName', 'sourceType', 'totalItems', 'categorizedCount', 'recurringDetectedCount', 'totalVolume', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'batchName', 'sourceType', 'totalItems', 'categorizedCount', 'recurringDetectedCount', 'totalVolume', 'status', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.batchName is string && data.batchName.size() >= 2 && data.batchName.size() <= 120
+        && data.sourceType is string && data.sourceType in ['csv_import', 'bank_feed', 'manual_batch']
+        && data.totalItems is int && data.totalItems >= 1 && data.totalItems <= 10000
+        && data.categorizedCount is int && data.categorizedCount >= 0 && data.categorizedCount <= data.totalItems
+        && data.recurringDetectedCount is int && data.recurringDetectedCount >= 0 && data.recurringDetectedCount <= data.totalItems
+        && (data.totalVolume is int || data.totalVolume is float) && data.totalVolume >= 0 && data.totalVolume <= 1000000000
+        && data.status is string && data.status in ['staged', 'committed']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPayment(data) {
+      return data.keys().hasAll(['ownerId', 'sourceAccountId', 'recipientName', 'recipientRoutingMask', 'paymentRail', 'amount', 'memo', 'mfaVerified', 'idempotencyKey', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'sourceAccountId', 'recipientName', 'recipientRoutingMask', 'paymentRail', 'amount', 'memo', 'mfaVerified', 'idempotencyKey', 'status', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.sourceAccountId is string && isValidId(data.sourceAccountId)
+        && data.recipientName is string && data.recipientName.size() >= 2 && data.recipientName.size() <= 120
+        && data.recipientRoutingMask is string && data.recipientRoutingMask.size() >= 4 && data.recipientRoutingMask.size() <= 12
+        && data.paymentRail is string && data.paymentRail in ['ACH', 'WIRE', 'FEDNOW', 'INTERNAL']
+        && (data.amount is int || data.amount is float) && data.amount > 0 && data.amount <= 100000000
+        && data.memo is string && data.memo.size() >= 1 && data.memo.size() <= 160
+        && data.mfaVerified is bool
+        && data.idempotencyKey is string && isValidId(data.idempotencyKey) && data.idempotencyKey.size() >= 8 && data.idempotencyKey.size() <= 64
+        && data.status is string && data.status in ['pending_mfa', 'settled', 'cancelled']
+        && (!(data.status == 'settled') || data.mfaVerified == true)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFinancialReport(data) {
+      return data.keys().hasAll(['ownerId', 'accountId', 'reportTitle', 'reportPeriod', 'reportType', 'totalInflow', 'totalOutflow', 'netCashFlow', 'transactionCount', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'accountId', 'reportTitle', 'reportPeriod', 'reportType', 'totalInflow', 'totalOutflow', 'netCashFlow', 'transactionCount', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.accountId is string && isValidId(data.accountId)
+        && data.reportTitle is string && data.reportTitle.size() >= 2 && data.reportTitle.size() <= 140
+        && data.reportPeriod is string && data.reportPeriod.size() >= 4 && data.reportPeriod.size() <= 40
+        && data.reportType is string && data.reportType in ['monthly_statement', 'cash_flow', 'tax_ledger', 'audit_pack']
+        && (data.totalInflow is int || data.totalInflow is float) && data.totalInflow >= 0 && data.totalInflow <= 1000000000
+        && (data.totalOutflow is int || data.totalOutflow is float) && data.totalOutflow >= 0 && data.totalOutflow <= 1000000000
+        && (data.netCashFlow is int || data.netCashFlow is float) && data.netCashFlow >= -1000000000 && data.netCashFlow <= 1000000000
+        && data.transactionCount is int && data.transactionCount >= 0 && data.transactionCount <= 1000000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidDtcRegistration(data) {
+      return data.keys().hasAll(['ownerId', 'legalEntityName', 'accountTier', 'taxIdLast4', 'jurisdiction', 'mfaMethod', 'mfaVerified', 'disclosureAccepted', 'dtcReferenceCode', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'legalEntityName', 'accountTier', 'taxIdLast4', 'jurisdiction', 'mfaMethod', 'mfaVerified', 'disclosureAccepted', 'dtcReferenceCode', 'status', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.legalEntityName is string && data.legalEntityName.size() >= 2 && data.legalEntityName.size() <= 140
+        && data.accountTier is string && data.accountTier in ['individual_custody', 'institutional_margin', 'prime_cash']
+        && data.taxIdLast4 is string && data.taxIdLast4.size() == 4 && data.taxIdLast4.matches('^[0-9]{4}$')
+        && data.jurisdiction is string && data.jurisdiction.size() >= 2 && data.jurisdiction.size() <= 80
+        && data.mfaMethod is string && data.mfaMethod in ['totp_authenticator', 'hardware_key', 'sms_otp']
+        && data.mfaVerified is bool
+        && data.disclosureAccepted is bool
+        && data.dtcReferenceCode is string && isValidId(data.dtcReferenceCode) && data.dtcReferenceCode.size() >= 6 && data.dtcReferenceCode.size() <= 32
+        && data.status is string && data.status in ['draft', 'mfa_verified', 'submitted', 'approved']
+        && (!(data.status in ['mfa_verified', 'submitted', 'approved']) || data.mfaVerified == true)
+        && (!(data.status in ['submitted', 'approved']) || data.disclosureAccepted == true)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBrokerageFirm(data) {
+      return data.keys().hasAll(['ownerId', 'firmName', 'crdNumber', 'secFileNumber', 'dtcParticipantNumber', 'clearingHouse', 'complianceOfficer', 'finraDistrict', 'complianceStatus', 'regulations', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'firmName', 'crdNumber', 'secFileNumber', 'dtcParticipantNumber', 'clearingHouse', 'complianceOfficer', 'finraDistrict', 'complianceStatus', 'regulations', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.firmName is string && data.firmName.size() >= 2 && data.firmName.size() <= 140
+        && data.crdNumber is string && data.crdNumber.size() >= 4 && data.crdNumber.size() <= 16 && data.crdNumber.matches('^[0-9]{4,16}$')
+        && data.secFileNumber is string && data.secFileNumber.size() >= 4 && data.secFileNumber.size() <= 24
+        && data.dtcParticipantNumber is string && data.dtcParticipantNumber.size() >= 4 && data.dtcParticipantNumber.size() <= 12 && data.dtcParticipantNumber.matches('^[0-9]{4,12}$')
+        && data.clearingHouse is string && data.clearingHouse.size() >= 2 && data.clearingHouse.size() <= 100
+        && data.complianceOfficer is string && data.complianceOfficer.size() >= 2 && data.complianceOfficer.size() <= 100
+        && data.finraDistrict is string && data.finraDistrict.size() >= 2 && data.finraDistrict.size() <= 60
+        && data.complianceStatus is string && data.complianceStatus in ['pending_review', 'registered', 'active']
+        && data.regulations is list && data.regulations.size() >= 1 && data.regulations.size() <= 10
+        && data.regulations[0] is string && data.regulations[0].size() >= 2 && data.regulations[0].size() <= 80
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTaxDocument(data) {
+      return data.keys().hasAll(['ownerId', 'firmId', 'accountId', 'formType', 'taxYear', 'filingStatus', 'grossProceeds', 'withheldTax', 'referenceCode', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'firmId', 'accountId', 'formType', 'taxYear', 'filingStatus', 'grossProceeds', 'withheldTax', 'referenceCode', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.firmId is string && isValidId(data.firmId)
+        && data.accountId is string && isValidId(data.accountId)
+        && data.formType is string && data.formType in ['1099-B', '1099-DIV', '1099-INT', 'W-9', 'W-8BEN', 'Schedule-D']
+        && data.taxYear is int && data.taxYear >= 2015 && data.taxYear <= 2035
+        && data.filingStatus is string && data.filingStatus in ['draft', 'ready', 'filed']
+        && (data.grossProceeds is int || data.grossProceeds is float) && data.grossProceeds >= 0 && data.grossProceeds <= 1000000000
+        && (data.withheldTax is int || data.withheldTax is float) && data.withheldTax >= 0 && data.withheldTax <= 1000000000
+        && data.referenceCode is string && isValidId(data.referenceCode) && data.referenceCode.size() >= 6 && data.referenceCode.size() <= 32
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAssetIngestion(data) {
+      return data.keys().hasAll(['ownerId', 'fileName', 'mimeType', 'fileSizeBytes', 'documentCategory', 'extractionEngine', 'extractedCount', 'totalExtractedValue', 'status', 'summaryNotes', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'fileName', 'mimeType', 'fileSizeBytes', 'documentCategory', 'extractionEngine', 'extractedCount', 'totalExtractedValue', 'status', 'summaryNotes', 'rawDocumentText', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.fileName is string && data.fileName.size() >= 1 && data.fileName.size() <= 160
+        && data.mimeType is string && data.mimeType.size() >= 3 && data.mimeType.size() <= 120
+        && (data.fileSizeBytes is int || data.fileSizeBytes is float) && data.fileSizeBytes >= 1 && data.fileSizeBytes <= 20000000
+        && data.documentCategory is string && data.documentCategory in ['brokerage_statement', 'closing_disclosure', 'subscription_agreement', 'holdings_csv', 'holdings_json', 'other_document']
+        && data.extractionEngine is string && data.extractionEngine in ['gemini_multimodal', 'csv_parser', 'json_parser', 'manual']
+        && data.extractedCount is int && data.extractedCount >= 1 && data.extractedCount <= 500
+        && (data.totalExtractedValue is int || data.totalExtractedValue is float) && data.totalExtractedValue >= 0 && data.totalExtractedValue <= 10000000000
+        && data.status is string && data.status in ['staged', 'committed', 'rejected']
+        && data.summaryNotes is string && data.summaryNotes.size() >= 1 && data.summaryNotes.size() <= 400
+        && (!('rawDocumentText' in data) || (data.rawDocumentText is string && data.rawDocumentText.size() <= 8000))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidStagedAsset(data) {
+      return data.keys().hasAll(['ownerId', 'ingestionId', 'fileName', 'extractionEngine', 'assetName', 'tickerOrIdentifier', 'assetCategoryGroup', 'assetClass', 'quantity', 'unitCostBasis', 'totalMarketValue', 'currency', 'valuationDate', 'jurisdiction', 'regulatoryClassification', 'accountId', 'firmId', 'confidenceNote', 'nameVerified', 'identifierVerified', 'valuationVerified', 'reviewStatus', 'reviewerNotes', 'committedAssetId', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'ingestionId', 'fileName', 'extractionEngine', 'assetName', 'tickerOrIdentifier', 'assetCategoryGroup', 'assetClass', 'quantity', 'unitCostBasis', 'totalMarketValue', 'currency', 'valuationDate', 'jurisdiction', 'regulatoryClassification', 'accountId', 'firmId', 'confidenceNote', 'sourceExcerpt', 'nameVerified', 'identifierVerified', 'valuationVerified', 'reviewStatus', 'reviewerNotes', 'committedAssetId', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.ingestionId is string && isValidId(data.ingestionId)
+        && data.fileName is string && data.fileName.size() >= 1 && data.fileName.size() <= 160
+        && data.extractionEngine is string && data.extractionEngine in ['gemini_multimodal', 'csv_parser', 'json_parser', 'manual']
+        && data.assetName is string && data.assetName.size() >= 2 && data.assetName.size() <= 140
+        && data.tickerOrIdentifier is string && data.tickerOrIdentifier.size() >= 1 && data.tickerOrIdentifier.size() <= 48
+        && data.assetCategoryGroup is string && data.assetCategoryGroup in ['public_securities', 'alternatives', 'real_estate']
+        && data.assetClass is string && data.assetClass in ['public_equity', 'etf_fund', 'fixed_income', 'private_equity', 'venture_fund', 'commodity', 'commercial_real_estate', 'residential_real_estate', 'reit']
+        && (data.quantity is int || data.quantity is float) && data.quantity > 0 && data.quantity <= 1000000000
+        && (data.unitCostBasis is int || data.unitCostBasis is float) && data.unitCostBasis >= 0 && data.unitCostBasis <= 1000000000
+        && (data.totalMarketValue is int || data.totalMarketValue is float) && data.totalMarketValue >= 0 && data.totalMarketValue <= 10000000000
+        && data.currency is string && data.currency in ['USD', 'EUR', 'GBP']
+        && data.valuationDate is string && data.valuationDate.size() >= 10 && data.valuationDate.size() <= 40
+        && data.jurisdiction is string && data.jurisdiction.size() >= 2 && data.jurisdiction.size() <= 80
+        && data.regulatoryClassification is string && data.regulatoryClassification.size() >= 2 && data.regulatoryClassification.size() <= 80
+        && data.accountId is string && (data.accountId == '' || isValidId(data.accountId))
+        && data.firmId is string && (data.firmId == '' || isValidId(data.firmId))
+        && data.confidenceNote is string && data.confidenceNote.size() >= 1 && data.confidenceNote.size() <= 200
+        && (!('sourceExcerpt' in data) || (data.sourceExcerpt is string && data.sourceExcerpt.size() <= 800))
+        && data.nameVerified is bool
+        && data.identifierVerified is bool
+        && data.valuationVerified is bool
+        && data.reviewStatus is string && data.reviewStatus in ['pending_review', 'verified', 'flagged', 'committed', 'rejected']
+        && (!(data.reviewStatus in ['verified', 'committed']) || (data.nameVerified == true && data.identifierVerified == true && data.valuationVerified == true))
+        && data.reviewerNotes is string && data.reviewerNotes.size() <= 240
+        && data.committedAssetId is string && (data.committedAssetId == '' || isValidId(data.committedAssetId))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidOnboardedAsset(data) {
+      return data.keys().hasAll(['ownerId', 'ingestionId', 'accountId', 'firmId', 'assetName', 'tickerOrIdentifier', 'assetCategoryGroup', 'assetClass', 'quantity', 'unitCostBasis', 'totalMarketValue', 'currency', 'valuationDate', 'jurisdiction', 'regulatoryClassification', 'mfaVerified', 'custodyStatus', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'ingestionId', 'accountId', 'firmId', 'brokerageAccountId', 'assetName', 'tickerOrIdentifier', 'assetCategoryGroup', 'assetClass', 'quantity', 'unitCostBasis', 'totalMarketValue', 'currency', 'valuationDate', 'jurisdiction', 'regulatoryClassification', 'mfaVerified', 'custodyStatus', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.ingestionId is string && (data.ingestionId == '' || isValidId(data.ingestionId))
+        && data.accountId is string && (data.accountId == '' || isValidId(data.accountId))
+        && data.firmId is string && (data.firmId == '' || isValidId(data.firmId))
+        && (!('brokerageAccountId' in data) || (data.brokerageAccountId is string && (data.brokerageAccountId == '' || isValidId(data.brokerageAccountId))))
+        && data.assetName is string && data.assetName.size() >= 2 && data.assetName.size() <= 140
+        && data.tickerOrIdentifier is string && data.tickerOrIdentifier.size() >= 1 && data.tickerOrIdentifier.size() <= 48
+        && data.assetCategoryGroup is string && data.assetCategoryGroup in ['public_securities', 'alternatives', 'real_estate']
+        && data.assetClass is string && data.assetClass in ['public_equity', 'etf_fund', 'fixed_income', 'private_equity', 'venture_fund', 'commodity', 'commercial_real_estate', 'residential_real_estate', 'reit']
+        && (data.quantity is int || data.quantity is float) && data.quantity > 0 && data.quantity <= 1000000000
+        && (data.unitCostBasis is int || data.unitCostBasis is float) && data.unitCostBasis >= 0 && data.unitCostBasis <= 1000000000
+        && (data.totalMarketValue is int || data.totalMarketValue is float) && data.totalMarketValue >= 0 && data.totalMarketValue <= 10000000000
+        && data.currency is string && data.currency in ['USD', 'EUR', 'GBP']
+        && data.valuationDate is string && data.valuationDate.size() >= 10 && data.valuationDate.size() <= 40
+        && data.jurisdiction is string && data.jurisdiction.size() >= 2 && data.jurisdiction.size() <= 80
+        && data.regulatoryClassification is string && data.regulatoryClassification.size() >= 2 && data.regulatoryClassification.size() <= 80
+        && data.mfaVerified is bool
+        && data.custodyStatus is string && data.custodyStatus in ['pending_verification', 'custodied', 'archived']
+        && (!(data.custodyStatus == 'custodied') || data.mfaVerified == true)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBrokerageAccount(data) {
+      return data.keys().hasAll(['ownerId', 'firmId', 'linkedBankAccountId', 'accountName', 'brokerInstitution', 'accountType', 'accountMask', 'connectionMode', 'apiProvider', 'syncStatus', 'lastSyncedAt', 'currency', 'cashBalance', 'marginDebt', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'firmId', 'linkedBankAccountId', 'accountName', 'brokerInstitution', 'accountType', 'accountMask', 'connectionMode', 'apiProvider', 'syncStatus', 'lastSyncedAt', 'currency', 'cashBalance', 'marginDebt', 'status', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.firmId is string && (data.firmId == '' || isValidId(data.firmId))
+        && data.linkedBankAccountId is string && (data.linkedBankAccountId == '' || isValidId(data.linkedBankAccountId))
+        && data.accountName is string && data.accountName.size() >= 2 && data.accountName.size() <= 120
+        && data.brokerInstitution is string && data.brokerInstitution.size() >= 2 && data.brokerInstitution.size() <= 100
+        && data.accountType is string && data.accountType in ['individual_taxable', 'ira_retirement', 'roth_ira', 'institutional_prime', 'trust_custody', 'joint_brokerage']
+        && data.accountMask is string && data.accountMask.size() == 4 && data.accountMask.matches('^[0-9]{4}$')
+        && data.connectionMode is string && data.connectionMode in ['manual', 'api_sync']
+        && data.apiProvider is string && data.apiProvider in ['manual_ledger', 'direct_api_feed', 'custody_fix_gateway', 'statement_sync']
+        && data.syncStatus is string && data.syncStatus in ['manual_only', 'synced', 'sync_pending', 'reauth_required']
+        && data.lastSyncedAt is string && data.lastSyncedAt.size() >= 10 && data.lastSyncedAt.size() <= 40
+        && data.currency is string && data.currency in ['USD', 'EUR', 'GBP']
+        && (data.cashBalance is int || data.cashBalance is float) && data.cashBalance >= 0 && data.cashBalance <= 10000000000
+        && (data.marginDebt is int || data.marginDebt is float) && data.marginDebt >= 0 && data.marginDebt <= 10000000000
+        && data.status is string && data.status in ['active', 'syncing', 'needs_reauth', 'closed']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBankTxArchitecture(data) {
+      return data.keys().hasAll(['ownerId', 'accountId', 'ruleName', 'flowPattern', 'primaryRail', 'settlementWindow', 'singleTxLimit', 'dailyLimit', 'mfaThreshold', 'dualApprovalRequired', 'autoReconcile', 'amlScreeningLevel', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'accountId', 'ruleName', 'flowPattern', 'primaryRail', 'settlementWindow', 'singleTxLimit', 'dailyLimit', 'mfaThreshold', 'dualApprovalRequired', 'autoReconcile', 'amlScreeningLevel', 'status', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.accountId is string && isValidId(data.accountId)
+        && data.ruleName is string && data.ruleName.size() >= 2 && data.ruleName.size() <= 120
+        && data.flowPattern is string && data.flowPattern in ['ach_origination', 'fedwire_rtgs', 'fednow_instant', 'internal_book_transfer', 'treasury_sweep', 'card_clearing']
+        && data.primaryRail is string && data.primaryRail in ['ACH', 'WIRE', 'FEDNOW', 'SWIFT', 'DTC_CNS', 'INTERNAL']
+        && data.settlementWindow is string && data.settlementWindow.size() >= 2 && data.settlementWindow.size() <= 60
+        && (data.singleTxLimit is int || data.singleTxLimit is float) && data.singleTxLimit > 0 && data.singleTxLimit <= 1000000000
+        && (data.dailyLimit is int || data.dailyLimit is float) && data.dailyLimit >= data.singleTxLimit && data.dailyLimit <= 10000000000
+        && (data.mfaThreshold is int || data.mfaThreshold is float) && data.mfaThreshold >= 0 && data.mfaThreshold <= 1000000000
+        && data.dualApprovalRequired is bool
+        && data.autoReconcile is bool
+        && data.amlScreeningLevel is string && data.amlScreeningLevel in ['standard', 'enhanced', 'institutional']
+        && data.status is string && data.status in ['active', 'paused', 'draft']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBrokerageTxArchitecture(data) {
+      return data.keys().hasAll(['ownerId', 'firmId', 'settlementAccountId', 'architectureName', 'txType', 'clearingVenue', 'settlementCycle', 'custodyModel', 'regulatoryControl', 'primaryRail', 'maxOrderNotional', 'mfaRequired', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'firmId', 'settlementAccountId', 'architectureName', 'txType', 'clearingVenue', 'settlementCycle', 'custodyModel', 'regulatoryControl', 'primaryRail', 'maxOrderNotional', 'mfaRequired', 'status', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.firmId is string && isValidId(data.firmId)
+        && data.settlementAccountId is string && isValidId(data.settlementAccountId)
+        && data.architectureName is string && data.architectureName.size() >= 2 && data.architectureName.size() <= 140
+        && data.txType is string && data.txType in ['equity_order_execution', 'fixed_income_dvp', 'options_derivatives', 'margin_financing', 'acats_transfer', 'securities_lending', 'dividend_corp_action', 'private_alt_subscription']
+        && data.clearingVenue is string && data.clearingVenue.size() >= 2 && data.clearingVenue.size() <= 80
+        && data.settlementCycle is string && data.settlementCycle.size() >= 2 && data.settlementCycle.size() <= 40
+        && data.custodyModel is string && data.custodyModel.size() >= 2 && data.custodyModel.size() <= 80
+        && data.regulatoryControl is string && data.regulatoryControl.size() >= 2 && data.regulatoryControl.size() <= 100
+        && data.primaryRail is string && data.primaryRail in ['ACH', 'WIRE', 'FEDNOW', 'SWIFT', 'DTC_CNS', 'INTERNAL']
+        && (data.maxOrderNotional is int || data.maxOrderNotional is float) && data.maxOrderNotional > 0 && data.maxOrderNotional <= 10000000000
+        && data.mfaRequired is bool
+        && data.status is string && data.status in ['active', 'testing', 'suspended']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidRailArchitecture(data) {
+      return data.keys().hasAll(['ownerId', 'linkedAccountId', 'railCode', 'railName', 'protocolStandard', 'settlementFinality', 'cutoffWindow', 'slaLatency', 'perTxCap', 'feeBps', 'failoverRailCode', 'mfaPolicy', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'linkedAccountId', 'railCode', 'railName', 'protocolStandard', 'settlementFinality', 'cutoffWindow', 'slaLatency', 'perTxCap', 'feeBps', 'failoverRailCode', 'mfaPolicy', 'status', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.linkedAccountId is string && isValidId(data.linkedAccountId)
+        && data.railCode is string && data.railCode in ['ACH', 'WIRE', 'FEDNOW', 'SWIFT', 'DTC_CNS', 'INTERNAL']
+        && data.railName is string && data.railName.size() >= 2 && data.railName.size() <= 120
+        && data.protocolStandard is string && data.protocolStandard.size() >= 2 && data.protocolStandard.size() <= 80
+        && data.settlementFinality is string && data.settlementFinality.size() >= 2 && data.settlementFinality.size() <= 80
+        && data.cutoffWindow is string && data.cutoffWindow.size() >= 2 && data.cutoffWindow.size() <= 80
+        && data.slaLatency is string && data.slaLatency.size() >= 2 && data.slaLatency.size() <= 40
+        && (data.perTxCap is int || data.perTxCap is float) && data.perTxCap > 0 && data.perTxCap <= 10000000000
+        && (data.feeBps is int || data.feeBps is float) && data.feeBps >= 0 && data.feeBps <= 1000
+        && data.failoverRailCode is string && data.failoverRailCode in ['ACH', 'WIRE', 'FEDNOW', 'SWIFT', 'DTC_CNS', 'INTERNAL', 'NONE']
+        && data.mfaPolicy is string && data.mfaPolicy in ['always', 'above_threshold', 'dual_approval']
+        && data.status is string && data.status in ['operational', 'degraded', 'maintenance']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCompanyAccount(data) {
+      return data.keys().hasAll(['ownerId', 'linkedAccountId', 'companyName', 'entityType', 'einLast4', 'jurisdiction', 'industrySector', 'authorizedSignersCount', 'creditFacilityLimit', 'operatingBalance', 'dualApprovalRequired', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'linkedAccountId', 'companyName', 'entityType', 'einLast4', 'jurisdiction', 'industrySector', 'authorizedSignersCount', 'creditFacilityLimit', 'operatingBalance', 'dualApprovalRequired', 'status', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.linkedAccountId is string && isValidId(data.linkedAccountId)
+        && data.companyName is string && data.companyName.size() >= 2 && data.companyName.size() <= 140
+        && data.entityType is string && data.entityType in ['c_corp', 's_corp', 'llc', 'lp_fund', 'holding_co']
+        && data.einLast4 is string && data.einLast4.size() == 4 && data.einLast4.matches('^[0-9]{4}$')
+        && data.jurisdiction is string && data.jurisdiction.size() >= 2 && data.jurisdiction.size() <= 80
+        && data.industrySector is string && data.industrySector.size() >= 2 && data.industrySector.size() <= 80
+        && data.authorizedSignersCount is int && data.authorizedSignersCount >= 1 && data.authorizedSignersCount <= 50
+        && (data.creditFacilityLimit is int || data.creditFacilityLimit is float) && data.creditFacilityLimit >= 0 && data.creditFacilityLimit <= 10000000000
+        && (data.operatingBalance is int || data.operatingBalance is float) && data.operatingBalance >= -100000000 && data.operatingBalance <= 10000000000
+        && data.dualApprovalRequired is bool
+        && data.status is string && data.status in ['active', 'audit_hold', 'dissolved']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPublicAccount(data) {
+      return data.keys().hasAll(['ownerId', 'linkedAccountId', 'publicHandle', 'displayTitle', 'issuerType', 'publicTickerOrLei', 'disclosedReserveUsd', 'transparencyStandard', 'visibility', 'allowInboundTransfers', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'linkedAccountId', 'publicHandle', 'displayTitle', 'issuerType', 'publicTickerOrLei', 'disclosedReserveUsd', 'transparencyStandard', 'visibility', 'allowInboundTransfers', 'status', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.linkedAccountId is string && isValidId(data.linkedAccountId)
+        && data.publicHandle is string && data.publicHandle.size() >= 3 && data.publicHandle.size() <= 40 && data.publicHandle.matches('^[a-zA-Z0-9_.-]+$')
+        && data.displayTitle is string && data.displayTitle.size() >= 2 && data.displayTitle.size() <= 140
+        && data.issuerType is string && data.issuerType in ['public_corporation', 'municipal_treasury', 'public_fund', 'open_ledger']
+        && data.publicTickerOrLei is string && data.publicTickerOrLei.size() >= 2 && data.publicTickerOrLei.size() <= 32
+        && (data.disclosedReserveUsd is int || data.disclosedReserveUsd is float) && data.disclosedReserveUsd >= 0 && data.disclosedReserveUsd <= 100000000000
+        && data.transparencyStandard is string && data.transparencyStandard.size() >= 2 && data.transparencyStandard.size() <= 80
+        && data.visibility is string && data.visibility in ['public_directory', 'unlisted']
+        && data.allowInboundTransfers is bool
+        && data.status is string && data.status in ['published', 'draft', 'archived']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAcquisitionArchitecture(data) {
+      return data.keys().hasAll(['ownerId', 'fundingAccountId', 'firmId', 'architectureName', 'acquisitionType', 'targetCounterparty', 'dealStructure', 'escrowAgent', 'closingHorizon', 'settlementRail', 'targetValuationUsd', 'committedCapitalUsd', 'escrowHoldbackPct', 'diligenceGateRequired', 'mfaSignoffRequired', 'stage', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'fundingAccountId', 'firmId', 'architectureName', 'acquisitionType', 'targetCounterparty', 'dealStructure', 'escrowAgent', 'closingHorizon', 'settlementRail', 'targetValuationUsd', 'committedCapitalUsd', 'escrowHoldbackPct', 'diligenceGateRequired', 'mfaSignoffRequired', 'stage', 'diligenceCompleted', 'escrowPaymentId', 'onboardedAssetId', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid
+        && data.fundingAccountId is string && isValidId(data.fundingAccountId)
+        && data.firmId is string && (data.firmId == '' || isValidId(data.firmId))
+        && data.architectureName is string && data.architectureName.size() >= 2 && data.architectureName.size() <= 140
+        && data.acquisitionType is string && data.acquisitionType in ['strategic_ma_buyout', 'real_estate_deed_escrow', 'private_credit_secondary', 'public_tender_pipe', 'treasury_portfolio_rollup']
+        && data.targetCounterparty is string && data.targetCounterparty.size() >= 2 && data.targetCounterparty.size() <= 140
+        && data.dealStructure is string && data.dealStructure.size() >= 2 && data.dealStructure.size() <= 100
+        && data.escrowAgent is string && data.escrowAgent.size() >= 2 && data.escrowAgent.size() <= 100
+        && data.closingHorizon is string && data.closingHorizon.size() >= 2 && data.closingHorizon.size() <= 60
+        && data.settlementRail is string && data.settlementRail in ['ACH', 'WIRE', 'FEDNOW', 'SWIFT', 'DTC_CNS', 'INTERNAL']
+        && (data.targetValuationUsd is int || data.targetValuationUsd is float) && data.targetValuationUsd > 0 && data.targetValuationUsd <= 100000000000
+        && (data.committedCapitalUsd is int || data.committedCapitalUsd is float) && data.committedCapitalUsd > 0 && data.committedCapitalUsd <= 100000000000
+        && (data.escrowHoldbackPct is int || data.escrowHoldbackPct is float) && data.escrowHoldbackPct >= 0 && data.escrowHoldbackPct <= 50
+        && data.diligenceGateRequired is bool
+        && data.mfaSignoffRequired is bool
+        && data.stage is string && data.stage in ['pipeline', 'diligence', 'escrow_funded', 'closed', 'cancelled']
+        && (!('diligenceCompleted' in data) || data.diligenceCompleted is bool)
+        && (!('escrowPaymentId' in data) || (data.escrowPaymentId is string && (data.escrowPaymentId == '' || isValidId(data.escrowPaymentId))))
+        && (!('onboardedAssetId' in data) || (data.onboardedAssetId is string && (data.onboardedAssetId == '' || isValidId(data.onboardedAssetId))))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+
+    match /users/{userId} {
+      allow get: if isVerifiedUser() && isValidId(userId) && userId == request.auth.uid;
+      allow list: if false;
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && userId == request.auth.uid
+        && isValidUserWorkspace(incoming())
+        && isValidTimestampCreate()
+        && (!('purchasesAccountId' in incoming()) || incoming().purchasesAccountId == '' || (
+          existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().purchasesAccountId)) &&
+          getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().purchasesAccountId)).data.ownerId == request.auth.uid
+        ));
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && userId == request.auth.uid
+        && isValidUserWorkspace(incoming())
+        && isOwner(existing().ownerId)
+        && incoming().ownerId == existing().ownerId
+        && isValidTimestampUpdate()
+        && (!('purchasesAccountId' in incoming()) || incoming().purchasesAccountId == '' || (
+          existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().purchasesAccountId)) &&
+          getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().purchasesAccountId)).data.ownerId == request.auth.uid
+        ))
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'mfaEnrolled', 'preferredCurrency', 'purchasesAccountId', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['purchasesAccountId', 'updatedAt'])
+        );
+      allow delete: if false;
+
+      match /private/{docId} {
+        allow get: if isVerifiedUser() && isValidId(userId) && (docId == 'profile' || docId == 'recovery') && userId == request.auth.uid;
+        allow list: if false;
+        allow create: if isVerifiedUser()
+          && isValidId(userId)
+          && isValidPrivateSubdoc(docId, incoming())
+          && userId == request.auth.uid
+          && isValidTimestampCreate();
+        allow update: if isVerifiedUser()
+          && isValidId(userId)
+          && isValidPrivateSubdoc(docId, incoming())
+          && userId == request.auth.uid
+          && isOwner(existing().ownerId)
+          && incoming().ownerId == existing().ownerId
+          && isValidTimestampUpdate()
+          && (
+            (docId == 'profile' && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'phone', 'legalAddress', 'taxIdLast4', 'updatedAt'])) ||
+            (docId == 'recovery' && (
+              incoming().diff(existing()).affectedKeys().hasOnly(['recoveryEmail', 'recoveryPhone', 'trustedContactName', 'trustedContactEmail', 'hardwareKeyLabel', 'timeLockHours', 'dualControlRequired', 'updatedAt']) ||
+              incoming().diff(existing()).affectedKeys().hasOnly(['backupCodesRemaining', 'recoveryCodeBatchId', 'updatedAt']) ||
+              incoming().diff(existing()).affectedKeys().hasOnly(['recoveryStatus', 'lastDrillAt', 'updatedAt'])
+            ))
+          );
+        allow delete: if false;
+      }
+    }
+
+    match /bank_accounts/{accountId} {
+      allow get: if isVerifiedUser() && isValidId(accountId) && isOwner(existing().ownerId);
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(accountId)
+        && isValidBankAccount(incoming())
+        && isValidTimestampCreate();
+      allow update: if isVerifiedUser()
+        && isValidId(accountId)
+        && isValidBankAccount(incoming())
+        && isOwner(existing().ownerId)
+        && incoming().ownerId == existing().ownerId
+        && isValidTimestampUpdate()
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['balance', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['accountName', 'status', 'updatedAt'])
+        );
+      allow delete: if isVerifiedUser() && isValidId(accountId) && isOwner(existing().ownerId);
+    }
+
+    match /transactions/{txId} {
+      allow get: if isVerifiedUser() && isValidId(txId) && isOwner(existing().ownerId);
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(txId)
+        && isValidTransaction(incoming())
+        && isValidTimestampCreate()
+        && existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().accountId))
+        && getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().accountId)).data.ownerId == request.auth.uid;
+      allow update: if isVerifiedUser()
+        && isValidId(txId)
+        && isValidTransaction(incoming())
+        && isOwner(existing().ownerId)
+        && incoming().ownerId == existing().ownerId
+        && incoming().accountId == existing().accountId
+        && isValidTimestampUpdate()
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['category', 'isRecurring', 'recurrenceCadence', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+        );
+      allow delete: if isVerifiedUser() && isValidId(txId) && isOwner(existing().ownerId);
+    }
+
+    match /budgets/{budgetId} {
+      allow get: if isVerifiedUser() && isValidId(budgetId) && isOwner(existing().ownerId);
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(budgetId)
+        && isValidBudget(incoming())
+        && isValidTimestampCreate();
+      allow update: if isVerifiedUser()
+        && isValidId(budgetId)
+        && isValidBudget(incoming())
+        && isOwner(existing().ownerId)
+        && incoming().ownerId == existing().ownerId
+        && isValidTimestampUpdate()
+        && incoming().diff(existing()).affectedKeys().hasOnly(['monthlyLimit', 'warningThresholdPct', 'criticalThresholdPct', 'alertsEnabled', 'updatedAt']);
+      allow delete: if isVerifiedUser() && isValidId(budgetId) && isOwner(existing().ownerId);
+    }
+
+    match /batch_jobs/{batchId} {
+      allow get: if isVerifiedUser() && isValidId(batchId) && isOwner(existing().ownerId);
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(batchId)
+        && isValidBatchJob(incoming())
+        && isValidTimestampCreate();
+      allow update: if isVerifiedUser()
+        && isValidId(batchId)
+        && isValidBatchJob(incoming())
+        && isOwner(existing().ownerId)
+        && incoming().ownerId == existing().ownerId
+        && existing().status != 'committed'
+        && isValidTimestampUpdate()
+        && incoming().diff(existing()).affectedKeys().hasOnly(['categorizedCount', 'recurringDetectedCount', 'status', 'updatedAt']);
+      allow delete: if isVerifiedUser() && isValidId(batchId) && isOwner(existing().ownerId) && existing().status != 'committed';
+    }
+
+    match /payments/{paymentId} {
+      allow get: if isVerifiedUser() && isValidId(paymentId) && isOwner(existing().ownerId);
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(paymentId)
+        && isValidPayment(incoming())
+        && isValidTimestampCreate()
+        && existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().sourceAccountId))
+        && getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().sourceAccountId)).data.ownerId == request.auth.uid;
+      allow update: if isVerifiedUser()
+        && isValidId(paymentId)
+        && isValidPayment(incoming())
+        && isOwner(existing().ownerId)
+        && incoming().ownerId == existing().ownerId
+        && incoming().sourceAccountId == existing().sourceAccountId
+        && incoming().idempotencyKey == existing().idempotencyKey
+        && existing().status == 'pending_mfa'
+        && isValidTimestampUpdate()
+        && (
+          (incoming().status == 'settled' && incoming().mfaVerified == true && incoming().diff(existing()).affectedKeys().hasOnly(['mfaVerified', 'status', 'updatedAt'])) ||
+          (incoming().status == 'cancelled' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
+        );
+      allow delete: if false;
+    }
+
+    match /financial_reports/{reportId} {
+      allow get: if isVerifiedUser() && isValidId(reportId) && isOwner(existing().ownerId);
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(reportId)
+        && isValidFinancialReport(incoming())
+        && isValidTimestampCreate()
+        && existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().accountId))
+        && getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().accountId)).data.ownerId == request.auth.uid;
+      allow update: if false;
+      allow delete: if isVerifiedUser() && isValidId(reportId) && isOwner(existing().ownerId);
+    }
+
+    match /dtc_registrations/{registrationId} {
+      allow get: if isVerifiedUser() && isValidId(registrationId) && isOwner(existing().ownerId);
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(registrationId)
+        && isValidDtcRegistration(incoming())
+        && incoming().status == 'draft'
+        && incoming().mfaVerified == false
+        && isValidTimestampCreate();
+      allow update: if isVerifiedUser()
+        && isValidId(registrationId)
+        && isValidDtcRegistration(incoming())
+        && isOwner(existing().ownerId)
+        && incoming().ownerId == existing().ownerId
+        && incoming().dtcReferenceCode == existing().dtcReferenceCode
+        && existing().status != 'approved'
+        && isValidTimestampUpdate()
+        && (
+          (existing().status == 'draft' && incoming().status == 'mfa_verified' && incoming().mfaVerified == true && incoming().diff(existing()).affectedKeys().hasOnly(['mfaMethod', 'mfaVerified', 'status', 'updatedAt'])) ||
+          (existing().status == 'mfa_verified' && incoming().status in ['submitted', 'approved'] && incoming().disclosureAccepted == true && incoming().diff(existing()).affectedKeys().hasOnly(['disclosureAccepted', 'status', 'updatedAt'])) ||
+          (existing().status == 'submitted' && incoming().status == 'approved' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
+        );
+      allow delete: if isVerifiedUser() && isValidId(registrationId) && isOwner(existing().ownerId) && existing().status == 'draft';
+    }
+
+    match /brokerage_firms/{firmId} {
+      allow get: if isVerifiedUser() && isValidId(firmId) && isOwner(existing().ownerId);
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(firmId)
+        && isValidBrokerageFirm(incoming())
+        && isValidTimestampCreate();
+      allow update: if isVerifiedUser()
+        && isValidId(firmId)
+        && isValidBrokerageFirm(incoming())
+        && isOwner(existing().ownerId)
+        && incoming().ownerId == existing().ownerId
+        && isValidTimestampUpdate()
+        && incoming().diff(existing()).affectedKeys().hasOnly(['complianceOfficer', 'complianceStatus', 'regulations', 'updatedAt']);
+      allow delete: if isVerifiedUser() && isValidId(firmId) && isOwner(existing().ownerId);
+    }
+
+    match /tax_documents/{docId} {
+      allow get: if isVerifiedUser() && isValidId(docId) && isOwner(existing().ownerId);
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(docId)
+        && isValidTaxDocument(incoming())
+        && isValidTimestampCreate()
+        && existsAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId))
+        && getAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)).data.ownerId == request.auth.uid
+        && existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().accountId))
+        && getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().accountId)).data.ownerId == request.auth.uid;
+      allow update: if isVerifiedUser()
+        && isValidId(docId)
+        && isValidTaxDocument(incoming())
+        && isOwner(existing().ownerId)
+        && incoming().ownerId == existing().ownerId
+        && incoming().firmId == existing().firmId
+        && incoming().accountId == existing().accountId
+        && existing().filingStatus != 'filed'
+        && isValidTimestampUpdate()
+        && incoming().diff(existing()).affectedKeys().hasOnly(['filingStatus', 'grossProceeds', 'withheldTax', 'updatedAt']);
+      allow delete: if isVerifiedUser() && isValidId(docId) && isOwner(existing().ownerId) && existing().filingStatus == 'draft';
+    }
+
+    match /asset_ingestions/{ingestionId} {
+      allow get: if isVerifiedUser() && isValidId(ingestionId) && isOwner(existing().ownerId);
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(ingestionId)
+        && isValidAssetIngestion(incoming())
+        && isValidTimestampCreate();
+      allow update: if isVerifiedUser()
+        && isValidId(ingestionId)
+        && isValidAssetIngestion(incoming())
+        && isOwner(existing().ownerId)
+        && incoming().ownerId == existing().ownerId
+        && existing().status == 'staged'
+        && isValidTimestampUpdate()
+        && incoming().diff(existing()).affectedKeys().hasOnly(['extractedCount', 'totalExtractedValue', 'status', 'summaryNotes', 'updatedAt']);
+      allow delete: if isVerifiedUser() && isValidId(ingestionId) && isOwner(existing().ownerId) && existing().status != 'committed';
+    }
+
+    match /staged_assets/{stagedId} {
+      allow get: if isVerifiedUser() && isValidId(stagedId) && isOwner(existing().ownerId);
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(stagedId)
+        && isValidStagedAsset(incoming())
+        && incoming().reviewStatus == 'pending_review'
+        && incoming().committedAssetId == ''
+        && isValidTimestampCreate()
+        && existsAfter(/databases/$(database)/documents/asset_ingestions/$(incoming().ingestionId))
+        && getAfter(/databases/$(database)/documents/asset_ingestions/$(incoming().ingestionId)).data.ownerId == request.auth.uid
+        && (incoming().accountId == '' || (
+          existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().accountId)) &&
+          getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().accountId)).data.ownerId == request.auth.uid
+        ))
+        && (incoming().firmId == '' || (
+          existsAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)) &&
+          getAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)).data.ownerId == request.auth.uid
+        ));
+      allow update: if isVerifiedUser()
+        && isValidId(stagedId)
+        && isValidStagedAsset(incoming())
+        && isOwner(existing().ownerId)
+        && incoming().ownerId == existing().ownerId
+        && incoming().ingestionId == existing().ingestionId
+        && existing().reviewStatus != 'committed'
+        && isValidTimestampUpdate()
+        && (incoming().accountId == existing().accountId || incoming().accountId == '' || (
+          existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().accountId)) &&
+          getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().accountId)).data.ownerId == request.auth.uid
+        ))
+        && (incoming().firmId == existing().firmId || incoming().firmId == '' || (
+          existsAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)) &&
+          getAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)).data.ownerId == request.auth.uid
+        ))
+        && (
+          (
+            incoming().reviewStatus in ['pending_review', 'verified', 'flagged', 'rejected']
+            && incoming().committedAssetId == ''
+            && incoming().diff(existing()).affectedKeys().hasOnly(['assetName', 'tickerOrIdentifier', 'assetCategoryGroup', 'assetClass', 'quantity', 'unitCostBasis', 'totalMarketValue', 'currency', 'valuationDate', 'jurisdiction', 'regulatoryClassification', 'accountId', 'firmId', 'nameVerified', 'identifierVerified', 'valuationVerified', 'reviewStatus', 'reviewerNotes', 'updatedAt'])
+          ) ||
+          (
+            incoming().reviewStatus == 'committed'
+            && incoming().committedAssetId != ''
+            && isValidId(incoming().committedAssetId)
+            && existsAfter(/databases/$(database)/documents/assets/$(incoming().committedAssetId))
+            && getAfter(/databases/$(database)/documents/assets/$(incoming().committedAssetId)).data.ownerId == request.auth.uid
+            && incoming().diff(existing()).affectedKeys().hasOnly(['reviewStatus', 'committedAssetId', 'updatedAt'])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(stagedId) && isOwner(existing().ownerId) && existing().reviewStatus != 'committed';
+    }
+
+    match /assets/{assetId} {
+      allow get: if isVerifiedUser() && isValidId(assetId) && isOwner(existing().ownerId);
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(assetId)
+        && isValidOnboardedAsset(incoming())
+        && incoming().custodyStatus == 'pending_verification'
+        && incoming().mfaVerified == false
+        && isValidTimestampCreate()
+        && (incoming().accountId == '' || (
+          existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().accountId)) &&
+          getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().accountId)).data.ownerId == request.auth.uid
+        ))
+        && (incoming().firmId == '' || (
+          existsAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)) &&
+          getAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)).data.ownerId == request.auth.uid
+        ))
+        && (!('brokerageAccountId' in incoming()) || incoming().brokerageAccountId == '' || (
+          existsAfter(/databases/$(database)/documents/brokerage_accounts/$(incoming().brokerageAccountId)) &&
+          getAfter(/databases/$(database)/documents/brokerage_accounts/$(incoming().brokerageAccountId)).data.ownerId == request.auth.uid
+        ))
+        && (incoming().ingestionId == '' || (
+          existsAfter(/databases/$(database)/documents/asset_ingestions/$(incoming().ingestionId)) &&
+          getAfter(/databases/$(database)/documents/asset_ingestions/$(incoming().ingestionId)).data.ownerId == request.auth.uid
+        ));
+      allow update: if isVerifiedUser()
+        && isValidId(assetId)
+        && isValidOnboardedAsset(incoming())
+        && isOwner(existing().ownerId)
+        && incoming().ownerId == existing().ownerId
+        && incoming().ingestionId == existing().ingestionId
+        && incoming().assetClass == existing().assetClass
+        && incoming().assetCategoryGroup == existing().assetCategoryGroup
+        && existing().custodyStatus != 'archived'
+        && isValidTimestampUpdate()
+        && (incoming().accountId == existing().accountId || incoming().accountId == '' || (
+          existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().accountId)) &&
+          getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().accountId)).data.ownerId == request.auth.uid
+        ))
+        && (incoming().firmId == existing().firmId || incoming().firmId == '' || (
+          existsAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)) &&
+          getAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)).data.ownerId == request.auth.uid
+        ))
+        && (!('brokerageAccountId' in incoming()) || incoming().brokerageAccountId == '' || (('brokerageAccountId' in existing()) && incoming().brokerageAccountId == existing().brokerageAccountId) || (
+          existsAfter(/databases/$(database)/documents/brokerage_accounts/$(incoming().brokerageAccountId)) &&
+          getAfter(/databases/$(database)/documents/brokerage_accounts/$(incoming().brokerageAccountId)).data.ownerId == request.auth.uid
+        ))
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['assetName', 'tickerOrIdentifier', 'quantity', 'unitCostBasis', 'totalMarketValue', 'valuationDate', 'jurisdiction', 'regulatoryClassification', 'accountId', 'firmId', 'brokerageAccountId', 'updatedAt']) ||
+          (existing().custodyStatus == 'pending_verification' && incoming().custodyStatus == 'custodied' && incoming().mfaVerified == true && incoming().diff(existing()).affectedKeys().hasOnly(['mfaVerified', 'custodyStatus', 'updatedAt'])) ||
+          (incoming().custodyStatus == 'archived' && incoming().diff(existing()).affectedKeys().hasOnly(['custodyStatus', 'updatedAt']))
+        );
+      allow delete: if isVerifiedUser() && isValidId(assetId) && isOwner(existing().ownerId) && existing().custodyStatus != 'custodied';
+    }
+
+    match /bank_tx_architectures/{archId} {
+      allow get: if isVerifiedUser() && isValidId(archId) && isOwner(existing().ownerId);
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(archId)
+        && isValidBankTxArchitecture(incoming())
+        && isValidTimestampCreate()
+        && existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().accountId))
+        && getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().accountId)).data.ownerId == request.auth.uid;
+      allow update: if isVerifiedUser()
+        && isValidId(archId)
+        && isValidBankTxArchitecture(incoming())
+        && isOwner(existing().ownerId)
+        && incoming().ownerId == existing().ownerId
+        && isValidTimestampUpdate()
+        && (incoming().accountId == existing().accountId || (
+          existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().accountId)) &&
+          getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().accountId)).data.ownerId == request.auth.uid
+        ))
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['accountId', 'ruleName', 'flowPattern', 'primaryRail', 'settlementWindow', 'singleTxLimit', 'dailyLimit', 'mfaThreshold', 'dualApprovalRequired', 'autoReconcile', 'amlScreeningLevel', 'status', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+        );
+      allow delete: if isVerifiedUser() && isValidId(archId) && isOwner(existing().ownerId);
+    }
+
+    match /brokerage_tx_architectures/{archId} {
+      allow get: if isVerifiedUser() && isValidId(archId) && isOwner(existing().ownerId);
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(archId)
+        && isValidBrokerageTxArchitecture(incoming())
+        && isValidTimestampCreate()
+        && existsAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId))
+        && getAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)).data.ownerId == request.auth.uid
+        && existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().settlementAccountId))
+        && getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().settlementAccountId)).data.ownerId == request.auth.uid;
+      allow update: if isVerifiedUser()
+        && isValidId(archId)
+        && isValidBrokerageTxArchitecture(incoming())
+        && isOwner(existing().ownerId)
+        && incoming().ownerId == existing().ownerId
+        && isValidTimestampUpdate()
+        && (incoming().firmId == existing().firmId || (
+          existsAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)) &&
+          getAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)).data.ownerId == request.auth.uid
+        ))
+        && (incoming().settlementAccountId == existing().settlementAccountId || (
+          existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().settlementAccountId)) &&
+          getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().settlementAccountId)).data.ownerId == request.auth.uid
+        ))
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['firmId', 'settlementAccountId', 'architectureName', 'txType', 'clearingVenue', 'settlementCycle', 'custodyModel', 'regulatoryControl', 'primaryRail', 'maxOrderNotional', 'mfaRequired', 'status', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+        );
+      allow delete: if isVerifiedUser() && isValidId(archId) && isOwner(existing().ownerId);
+    }
+
+    match /rail_architectures/{railId} {
+      allow get: if isVerifiedUser() && isValidId(railId) && isOwner(existing().ownerId);
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(railId)
+        && isValidRailArchitecture(incoming())
+        && isValidTimestampCreate()
+        && existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().linkedAccountId))
+        && getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().linkedAccountId)).data.ownerId == request.auth.uid;
+      allow update: if isVerifiedUser()
+        && isValidId(railId)
+        && isValidRailArchitecture(incoming())
+        && isOwner(existing().ownerId)
+        && incoming().ownerId == existing().ownerId
+        && isValidTimestampUpdate()
+        && (incoming().linkedAccountId == existing().linkedAccountId || (
+          existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().linkedAccountId)) &&
+          getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().linkedAccountId)).data.ownerId == request.auth.uid
+        ))
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['linkedAccountId', 'railCode', 'railName', 'protocolStandard', 'settlementFinality', 'cutoffWindow', 'slaLatency', 'perTxCap', 'feeBps', 'failoverRailCode', 'mfaPolicy', 'status', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+        );
+      allow delete: if isVerifiedUser() && isValidId(railId) && isOwner(existing().ownerId);
+    }
+
+    match /company_accounts/{companyId} {
+      allow get: if isVerifiedUser() && isValidId(companyId) && isOwner(existing().ownerId);
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(companyId)
+        && isValidCompanyAccount(incoming())
+        && isValidTimestampCreate()
+        && existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().linkedAccountId))
+        && getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().linkedAccountId)).data.ownerId == request.auth.uid;
+      allow update: if isVerifiedUser()
+        && isValidId(companyId)
+        && isValidCompanyAccount(incoming())
+        && isOwner(existing().ownerId)
+        && incoming().ownerId == existing().ownerId
+        && existing().status != 'dissolved'
+        && isValidTimestampUpdate()
+        && (incoming().linkedAccountId == existing().linkedAccountId || (
+          existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().linkedAccountId)) &&
+          getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().linkedAccountId)).data.ownerId == request.auth.uid
+        ))
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['linkedAccountId', 'companyName', 'entityType', 'einLast4', 'jurisdiction', 'industrySector', 'authorizedSignersCount', 'creditFacilityLimit', 'operatingBalance', 'dualApprovalRequired', 'status', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['operatingBalance', 'updatedAt'])
+        );
+      allow delete: if isVerifiedUser() && isValidId(companyId) && isOwner(existing().ownerId) && existing().status != 'dissolved';
+    }
+
+    match /public_accounts/{publicId} {
+      allow get: if isVerifiedUser() && isValidId(publicId) && (isOwner(existing().ownerId) || (existing().visibility == 'public_directory' && existing().status == 'published'));
+      allow list: if isVerifiedUser() && (resource.data.ownerId == request.auth.uid || (resource.data.visibility == 'public_directory' && resource.data.status == 'published'));
+      allow create: if isVerifiedUser()
+        && isValidId(publicId)
+        && isValidPublicAccount(incoming())
+        && isValidTimestampCreate()
+        && existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().linkedAccountId))
+        && getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().linkedAccountId)).data.ownerId == request.auth.uid;
+      allow update: if isVerifiedUser()
+        && isValidId(publicId)
+        && isValidPublicAccount(incoming())
+        && isOwner(existing().ownerId)
+        && incoming().ownerId == existing().ownerId
+        && existing().status != 'archived'
+        && isValidTimestampUpdate()
+        && (incoming().linkedAccountId == existing().linkedAccountId || (
+          existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().linkedAccountId)) &&
+          getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().linkedAccountId)).data.ownerId == request.auth.uid
+        ))
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['linkedAccountId', 'publicHandle', 'displayTitle', 'issuerType', 'publicTickerOrLei', 'disclosedReserveUsd', 'transparencyStandard', 'visibility', 'allowInboundTransfers', 'status', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'visibility', 'updatedAt'])
+        );
+      allow delete: if isVerifiedUser() && isValidId(publicId) && isOwner(existing().ownerId) && existing().status != 'archived';
+    }
+
+    match /acquisition_architectures/{acqId} {
+      allow get: if isVerifiedUser() && isValidId(acqId) && isOwner(existing().ownerId);
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(acqId)
+        && isValidAcquisitionArchitecture(incoming())
+        && incoming().stage in ['pipeline', 'diligence']
+        && isValidTimestampCreate()
+        && existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().fundingAccountId))
+        && getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().fundingAccountId)).data.ownerId == request.auth.uid
+        && (incoming().firmId == '' || (
+          existsAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)) &&
+          getAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)).data.ownerId == request.auth.uid
+        ))
+        && (!('escrowPaymentId' in incoming()) || incoming().escrowPaymentId == '')
+        && (!('onboardedAssetId' in incoming()) || incoming().onboardedAssetId == '');
+      allow update: if isVerifiedUser()
+        && isValidId(acqId)
+        && isValidAcquisitionArchitecture(incoming())
+        && isOwner(existing().ownerId)
+        && incoming().ownerId == existing().ownerId
+        && !(existing().stage in ['closed', 'cancelled'])
+        && isValidTimestampUpdate()
+        && (incoming().fundingAccountId == existing().fundingAccountId || (
+          existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().fundingAccountId)) &&
+          getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().fundingAccountId)).data.ownerId == request.auth.uid
+        ))
+        && (incoming().firmId == existing().firmId || incoming().firmId == '' || (
+          existsAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)) &&
+          getAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)).data.ownerId == request.auth.uid
+        ))
+        && (!('escrowPaymentId' in incoming()) || incoming().escrowPaymentId == '' || (
+          existsAfter(/databases/$(database)/documents/payments/$(incoming().escrowPaymentId)) &&
+          getAfter(/databases/$(database)/documents/payments/$(incoming().escrowPaymentId)).data.ownerId == request.auth.uid
+        ))
+        && (!('onboardedAssetId' in incoming()) || incoming().onboardedAssetId == '' || (
+          existsAfter(/databases/$(database)/documents/assets/$(incoming().onboardedAssetId)) &&
+          getAfter(/databases/$(database)/documents/assets/$(incoming().onboardedAssetId)).data.ownerId == request.auth.uid
+        ))
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['fundingAccountId', 'firmId', 'architectureName', 'acquisitionType', 'targetCounterparty', 'dealStructure', 'escrowAgent', 'closingHorizon', 'settlementRail', 'targetValuationUsd', 'committedCapitalUsd', 'escrowHoldbackPct', 'diligenceGateRequired', 'mfaSignoffRequired', 'stage', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['stage', 'diligenceCompleted', 'escrowPaymentId', 'onboardedAssetId', 'fundingAccountId', 'updatedAt'])
+        );
+      allow delete: if isVerifiedUser() && isValidId(acqId) && isOwner(existing().ownerId) && !(existing().stage in ['closed', 'cancelled']);
+    }
+
+    match /brokerage_accounts/{accountId} {
+      allow get: if isVerifiedUser() && isValidId(accountId) && isOwner(existing().ownerId);
+      allow list: if isVerifiedUser() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(accountId)
+        && isValidBrokerageAccount(incoming())
+        && isValidTimestampCreate()
+        && (incoming().firmId == '' || (
+          existsAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)) &&
+          getAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)).data.ownerId == request.auth.uid
+        ))
+        && (incoming().linkedBankAccountId == '' || (
+          existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().linkedBankAccountId)) &&
+          getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().linkedBankAccountId)).data.ownerId == request.auth.uid
+        ));
+      allow update: if isVerifiedUser()
+        && isValidId(accountId)
+        && isValidBrokerageAccount(incoming())
+        && isOwner(existing().ownerId)
+        && incoming().ownerId == existing().ownerId
+        && existing().status != 'closed'
+        && isValidTimestampUpdate()
+        && (incoming().firmId == existing().firmId || incoming().firmId == '' || (
+          existsAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)) &&
+          getAfter(/databases/$(database)/documents/brokerage_firms/$(incoming().firmId)).data.ownerId == request.auth.uid
+        ))
+        && (incoming().linkedBankAccountId == existing().linkedBankAccountId || incoming().linkedBankAccountId == '' || (
+          existsAfter(/databases/$(database)/documents/bank_accounts/$(incoming().linkedBankAccountId)) &&
+          getAfter(/databases/$(database)/documents/bank_accounts/$(incoming().linkedBankAccountId)).data.ownerId == request.auth.uid
+        ))
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['firmId', 'linkedBankAccountId', 'accountName', 'brokerInstitution', 'accountType', 'connectionMode', 'apiProvider', 'syncStatus', 'lastSyncedAt', 'cashBalance', 'marginDebt', 'status', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['syncStatus', 'lastSyncedAt', 'cashBalance', 'marginDebt', 'status', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+        );
+      allow delete: if isVerifiedUser() && isValidId(accountId) && isOwner(existing().ownerId) && existing().status != 'closed';
+    }
+  }
+}

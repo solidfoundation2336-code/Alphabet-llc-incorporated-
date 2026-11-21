@@ -1,0 +1,568 @@
+{
+  "entities": {
+    "UserWorkspace": {
+      "title": "UserWorkspace",
+      "description": "Non-PII workspace settings, MFA enrollment status, and designated Purchases settlement account for an authenticated account holder.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "mfaEnrolled": { "type": "boolean" },
+        "preferredCurrency": { "type": "string", "enum": ["USD", "EUR", "GBP"] },
+        "purchasesAccountId": { "type": "string", "minLength": 0, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "displayName", "mfaEnrolled", "preferredCurrency", "createdAt", "updatedAt"]
+    },
+    "UserPrivateProfile": {
+      "title": "UserPrivateProfile",
+      "description": "Isolated PII record for the authenticated account holder.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "minLength": 3, "maxLength": 200 },
+        "phone": { "type": "string", "minLength": 4, "maxLength": 32 },
+        "legalAddress": { "type": "string", "minLength": 4, "maxLength": 240 },
+        "taxIdLast4": { "type": "string", "minLength": 4, "maxLength": 4, "pattern": "^[0-9]{4}$" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "email", "phone", "legalAddress", "taxIdLast4", "createdAt", "updatedAt"]
+    },
+    "BankAccount": {
+      "title": "BankAccount",
+      "description": "Linked bank or treasury cash account belonging to a user.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "accountName": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "institutionName": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "accountType": { "type": "string", "enum": ["checking", "savings", "treasury", "settlement", "purchases", "company", "public"] },
+        "accountMask": { "type": "string", "minLength": 4, "maxLength": 4, "pattern": "^[0-9]{4}$" },
+        "currency": { "type": "string", "enum": ["USD", "EUR", "GBP"] },
+        "balance": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "frozen", "closed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "accountName", "institutionName", "accountType", "accountMask", "currency", "balance", "status", "createdAt", "updatedAt"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Real-time bank or card ledger transaction.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "accountId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "merchant": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "amount": { "type": "number" },
+        "direction": { "type": "string", "enum": ["debit", "credit"] },
+        "category": { "type": "string", "minLength": 2, "maxLength": 60 },
+        "isRecurring": { "type": "boolean" },
+        "recurrenceCadence": { "type": "string", "enum": ["none", "weekly", "monthly", "quarterly", "annual"] },
+        "batchId": { "type": "string", "minLength": 0, "maxLength": 128 },
+        "status": { "type": "string", "enum": ["posted", "pending", "flagged"] },
+        "occurredAt": { "type": "string", "minLength": 10, "maxLength": 40 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "accountId", "merchant", "description", "amount", "direction", "category", "isRecurring", "recurrenceCadence", "batchId", "status", "occurredAt", "createdAt", "updatedAt"]
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "Monthly spending limit and alert thresholds for a category.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "category": { "type": "string", "minLength": 2, "maxLength": 60 },
+        "monthlyLimit": { "type": "number" },
+        "warningThresholdPct": { "type": "number" },
+        "criticalThresholdPct": { "type": "number" },
+        "alertsEnabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "category", "monthlyLimit", "warningThresholdPct", "criticalThresholdPct", "alertsEnabled", "createdAt", "updatedAt"]
+    },
+    "BatchJob": {
+      "title": "BatchJob",
+      "description": "Batch transaction ingestion and recurring categorization audit record.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "batchName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "sourceType": { "type": "string", "enum": ["csv_import", "bank_feed", "manual_batch"] },
+        "totalItems": { "type": "number" },
+        "categorizedCount": { "type": "number" },
+        "recurringDetectedCount": { "type": "number" },
+        "totalVolume": { "type": "number" },
+        "status": { "type": "string", "enum": ["staged", "committed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "batchName", "sourceType", "totalItems", "categorizedCount", "recurringDetectedCount", "totalVolume", "status", "createdAt", "updatedAt"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Secure outgoing payment settlement with MFA verification.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "sourceAccountId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "recipientName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "recipientRoutingMask": { "type": "string", "minLength": 4, "maxLength": 12 },
+        "paymentRail": { "type": "string", "enum": ["ACH", "WIRE", "FEDNOW", "INTERNAL"] },
+        "amount": { "type": "number" },
+        "memo": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "mfaVerified": { "type": "boolean" },
+        "idempotencyKey": { "type": "string", "minLength": 8, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "status": { "type": "string", "enum": ["pending_mfa", "settled", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "sourceAccountId", "recipientName", "recipientRoutingMask", "paymentRail", "amount", "memo", "mfaVerified", "idempotencyKey", "status", "createdAt", "updatedAt"]
+    },
+    "FinancialReport": {
+      "title": "FinancialReport",
+      "description": "Generated financial statement and audit summary per user account.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "accountId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "reportTitle": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "reportPeriod": { "type": "string", "minLength": 4, "maxLength": 40 },
+        "reportType": { "type": "string", "enum": ["monthly_statement", "cash_flow", "tax_ledger", "audit_pack"] },
+        "totalInflow": { "type": "number" },
+        "totalOutflow": { "type": "number" },
+        "netCashFlow": { "type": "number" },
+        "transactionCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "accountId", "reportTitle", "reportPeriod", "reportType", "totalInflow", "totalOutflow", "netCashFlow", "transactionCount", "createdAt", "updatedAt"]
+    },
+    "DtcRegistration": {
+      "title": "DtcRegistration",
+      "description": "Depository Trust Company account registration and MFA identity verification workflow.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "legalEntityName": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "accountTier": { "type": "string", "enum": ["individual_custody", "institutional_margin", "prime_cash"] },
+        "taxIdLast4": { "type": "string", "minLength": 4, "maxLength": 4, "pattern": "^[0-9]{4}$" },
+        "jurisdiction": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "mfaMethod": { "type": "string", "enum": ["totp_authenticator", "hardware_key", "sms_otp"] },
+        "mfaVerified": { "type": "boolean" },
+        "disclosureAccepted": { "type": "boolean" },
+        "dtcReferenceCode": { "type": "string", "minLength": 6, "maxLength": 32, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "status": { "type": "string", "enum": ["draft", "mfa_verified", "submitted", "approved"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "legalEntityName", "accountTier", "taxIdLast4", "jurisdiction", "mfaMethod", "mfaVerified", "disclosureAccepted", "dtcReferenceCode", "status", "createdAt", "updatedAt"]
+    },
+    "BrokerageFirm": {
+      "title": "BrokerageFirm",
+      "description": "Registered brokerage firm and regulatory compliance profile.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "firmName": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "crdNumber": { "type": "string", "minLength": 4, "maxLength": 16, "pattern": "^[0-9]{4,16}$" },
+        "secFileNumber": { "type": "string", "minLength": 4, "maxLength": 24 },
+        "dtcParticipantNumber": { "type": "string", "minLength": 4, "maxLength": 12, "pattern": "^[0-9]{4,12}$" },
+        "clearingHouse": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "complianceOfficer": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "finraDistrict": { "type": "string", "minLength": 2, "maxLength": 60 },
+        "complianceStatus": { "type": "string", "enum": ["pending_review", "registered", "active"] },
+        "regulations": { "type": "array", "description": "Bounded list of up to 10 regulatory frameworks." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "firmName", "crdNumber", "secFileNumber", "dtcParticipantNumber", "clearingHouse", "complianceOfficer", "finraDistrict", "complianceStatus", "regulations", "createdAt", "updatedAt"]
+    },
+    "TaxDocument": {
+      "title": "TaxDocument",
+      "description": "Regulatory tax reporting documentation linked to a user account and brokerage firm.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "firmId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "accountId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "formType": { "type": "string", "enum": ["1099-B", "1099-DIV", "1099-INT", "W-9", "W-8BEN", "Schedule-D"] },
+        "taxYear": { "type": "number" },
+        "filingStatus": { "type": "string", "enum": ["draft", "ready", "filed"] },
+        "grossProceeds": { "type": "number" },
+        "withheldTax": { "type": "number" },
+        "referenceCode": { "type": "string", "minLength": 6, "maxLength": 32, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "firmId", "accountId", "formType", "taxYear", "filingStatus", "grossProceeds", "withheldTax", "referenceCode", "createdAt", "updatedAt"]
+    },
+    "AssetIngestion": {
+      "title": "AssetIngestion",
+      "description": "Audit record for an uploaded onboarding document processed via Gemini multimodal extraction or structured CSV/JSON parsing.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fileName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "mimeType": { "type": "string", "minLength": 3, "maxLength": 120 },
+        "fileSizeBytes": { "type": "number" },
+        "documentCategory": { "type": "string", "enum": ["brokerage_statement", "closing_disclosure", "subscription_agreement", "holdings_csv", "holdings_json", "other_document"] },
+        "extractionEngine": { "type": "string", "enum": ["gemini_multimodal", "csv_parser", "json_parser", "manual"] },
+        "extractedCount": { "type": "number" },
+        "totalExtractedValue": { "type": "number" },
+        "status": { "type": "string", "enum": ["staged", "committed", "rejected"] },
+        "summaryNotes": { "type": "string", "minLength": 1, "maxLength": 400 },
+        "rawDocumentText": { "type": "string", "minLength": 0, "maxLength": 8000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "fileName", "mimeType", "fileSizeBytes", "documentCategory", "extractionEngine", "extractedCount", "totalExtractedValue", "status", "summaryNotes", "createdAt", "updatedAt"]
+    },
+    "OnboardedAsset": {
+      "title": "OnboardedAsset",
+      "description": "Onboarded asset holding across public securities, alternatives, and real estate with custody and MFA verification status.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ingestionId": { "type": "string", "minLength": 0, "maxLength": 128 },
+        "accountId": { "type": "string", "minLength": 0, "maxLength": 128 },
+        "firmId": { "type": "string", "minLength": 0, "maxLength": 128 },
+        "brokerageAccountId": { "type": "string", "minLength": 0, "maxLength": 128 },
+        "assetName": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "tickerOrIdentifier": { "type": "string", "minLength": 1, "maxLength": 48 },
+        "assetCategoryGroup": { "type": "string", "enum": ["public_securities", "alternatives", "real_estate"] },
+        "assetClass": { "type": "string", "enum": ["public_equity", "etf_fund", "fixed_income", "private_equity", "venture_fund", "commodity", "commercial_real_estate", "residential_real_estate", "reit"] },
+        "quantity": { "type": "number" },
+        "unitCostBasis": { "type": "number" },
+        "totalMarketValue": { "type": "number" },
+        "currency": { "type": "string", "enum": ["USD", "EUR", "GBP"] },
+        "valuationDate": { "type": "string", "minLength": 10, "maxLength": 40 },
+        "jurisdiction": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "regulatoryClassification": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "mfaVerified": { "type": "boolean" },
+        "custodyStatus": { "type": "string", "enum": ["pending_verification", "custodied", "archived"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "ingestionId", "accountId", "firmId", "assetName", "tickerOrIdentifier", "assetCategoryGroup", "assetClass", "quantity", "unitCostBasis", "totalMarketValue", "currency", "valuationDate", "jurisdiction", "regulatoryClassification", "mfaVerified", "custodyStatus", "createdAt", "updatedAt"]
+    },
+    "AccountRecoveryConfig": {
+      "title": "AccountRecoveryConfig",
+      "description": "Owner-isolated account recovery credentials, backup contacts, hardware key binding, time-lock policy, and recovery kit state.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "recoveryEmail": { "type": "string", "minLength": 3, "maxLength": 200 },
+        "recoveryPhone": { "type": "string", "minLength": 4, "maxLength": 32 },
+        "trustedContactName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "trustedContactEmail": { "type": "string", "minLength": 3, "maxLength": 200 },
+        "hardwareKeyLabel": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "backupCodesRemaining": { "type": "number" },
+        "recoveryCodeBatchId": { "type": "string", "minLength": 4, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "timeLockHours": { "type": "number" },
+        "dualControlRequired": { "type": "boolean" },
+        "recoveryStatus": { "type": "string", "enum": ["configured", "drill_verified", "recovery_hold"] },
+        "lastDrillAt": { "type": "string", "minLength": 10, "maxLength": 40 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "recoveryEmail", "recoveryPhone", "trustedContactName", "trustedContactEmail", "hardwareKeyLabel", "backupCodesRemaining", "recoveryCodeBatchId", "timeLockHours", "dualControlRequired", "recoveryStatus", "lastDrillAt", "createdAt", "updatedAt"]
+    },
+    "BankTxArchitecture": {
+      "title": "BankTxArchitecture",
+      "description": "Configurable bank transaction routing, velocity limits, AML screening, and settlement pipeline policy tied to a user bank account.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "accountId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ruleName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "flowPattern": { "type": "string", "enum": ["ach_origination", "fedwire_rtgs", "fednow_instant", "internal_book_transfer", "treasury_sweep", "card_clearing"] },
+        "primaryRail": { "type": "string", "enum": ["ACH", "WIRE", "FEDNOW", "SWIFT", "DTC_CNS", "INTERNAL"] },
+        "settlementWindow": { "type": "string", "minLength": 2, "maxLength": 60 },
+        "singleTxLimit": { "type": "number" },
+        "dailyLimit": { "type": "number" },
+        "mfaThreshold": { "type": "number" },
+        "dualApprovalRequired": { "type": "boolean" },
+        "autoReconcile": { "type": "boolean" },
+        "amlScreeningLevel": { "type": "string", "enum": ["standard", "enhanced", "institutional"] },
+        "status": { "type": "string", "enum": ["active", "paused", "draft"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "accountId", "ruleName", "flowPattern", "primaryRail", "settlementWindow", "singleTxLimit", "dailyLimit", "mfaThreshold", "dualApprovalRequired", "autoReconcile", "amlScreeningLevel", "status", "createdAt", "updatedAt"]
+    },
+    "BrokerageTxArchitecture": {
+      "title": "BrokerageTxArchitecture",
+      "description": "End-to-end brokerage execution, clearing, custody, and settlement architecture across all institutional and retail brokerage transaction classes.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "firmId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "settlementAccountId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "architectureName": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "txType": { "type": "string", "enum": ["equity_order_execution", "fixed_income_dvp", "options_derivatives", "margin_financing", "acats_transfer", "securities_lending", "dividend_corp_action", "private_alt_subscription"] },
+        "clearingVenue": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "settlementCycle": { "type": "string", "minLength": 2, "maxLength": 40 },
+        "custodyModel": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "regulatoryControl": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "primaryRail": { "type": "string", "enum": ["ACH", "WIRE", "FEDNOW", "SWIFT", "DTC_CNS", "INTERNAL"] },
+        "maxOrderNotional": { "type": "number" },
+        "mfaRequired": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["active", "testing", "suspended"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "firmId", "settlementAccountId", "architectureName", "txType", "clearingVenue", "settlementCycle", "custodyModel", "regulatoryControl", "primaryRail", "maxOrderNotional", "mfaRequired", "status", "createdAt", "updatedAt"]
+    },
+    "RailArchitecture": {
+      "title": "RailArchitecture",
+      "description": "Payment and clearing rail architecture specification defining messaging protocols, finality SLAs, cutoff windows, fees, and failover routing.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "linkedAccountId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "railCode": { "type": "string", "enum": ["ACH", "WIRE", "FEDNOW", "SWIFT", "DTC_CNS", "INTERNAL"] },
+        "railName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "protocolStandard": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "settlementFinality": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "cutoffWindow": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "slaLatency": { "type": "string", "minLength": 2, "maxLength": 40 },
+        "perTxCap": { "type": "number" },
+        "feeBps": { "type": "number" },
+        "failoverRailCode": { "type": "string", "enum": ["ACH", "WIRE", "FEDNOW", "SWIFT", "DTC_CNS", "INTERNAL", "NONE"] },
+        "mfaPolicy": { "type": "string", "enum": ["always", "above_threshold", "dual_approval"] },
+        "status": { "type": "string", "enum": ["operational", "degraded", "maintenance"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "linkedAccountId", "railCode", "railName", "protocolStandard", "settlementFinality", "cutoffWindow", "slaLatency", "perTxCap", "feeBps", "failoverRailCode", "mfaPolicy", "status", "createdAt", "updatedAt"]
+    },
+    "CompanyAccount": {
+      "title": "CompanyAccount",
+      "description": "Corporate or institutional business entity account with legal structure, EIN last 4, authorized signers, credit facility limit, and linked bank settlement account.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "linkedAccountId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "companyName": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "entityType": { "type": "string", "enum": ["c_corp", "s_corp", "llc", "lp_fund", "holding_co"] },
+        "einLast4": { "type": "string", "minLength": 4, "maxLength": 4, "pattern": "^[0-9]{4}$" },
+        "jurisdiction": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "industrySector": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "authorizedSignersCount": { "type": "number" },
+        "creditFacilityLimit": { "type": "number" },
+        "operatingBalance": { "type": "number" },
+        "dualApprovalRequired": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["active", "audit_hold", "dissolved"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "linkedAccountId", "companyName", "entityType", "einLast4", "jurisdiction", "industrySector", "authorizedSignersCount", "creditFacilityLimit", "operatingBalance", "dualApprovalRequired", "status", "createdAt", "updatedAt"]
+    },
+    "PublicAccount": {
+      "title": "PublicAccount",
+      "description": "Publicly disclosed treasury, municipal, or corporate transparency account (zero PII) supporting public directory visibility and inbound transfer routing.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "linkedAccountId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "publicHandle": { "type": "string", "minLength": 3, "maxLength": 40, "pattern": "^[a-zA-Z0-9_.-]+$" },
+        "displayTitle": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "issuerType": { "type": "string", "enum": ["public_corporation", "municipal_treasury", "public_fund", "open_ledger"] },
+        "publicTickerOrLei": { "type": "string", "minLength": 2, "maxLength": 32 },
+        "disclosedReserveUsd": { "type": "number" },
+        "transparencyStandard": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "visibility": { "type": "string", "enum": ["public_directory", "unlisted"] },
+        "allowInboundTransfers": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["published", "draft", "archived"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "linkedAccountId", "publicHandle", "displayTitle", "issuerType", "publicTickerOrLei", "disclosedReserveUsd", "transparencyStandard", "visibility", "allowInboundTransfers", "status", "createdAt", "updatedAt"]
+    },
+    "StagedAsset": {
+      "title": "StagedAsset",
+      "description": "Extracted holding queued in the Staging Review workflow where users verify asset name, identifier, and valuation accuracy prior to committing to the permanent assets ledger.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ingestionId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fileName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "extractionEngine": { "type": "string", "enum": ["gemini_multimodal", "csv_parser", "json_parser", "manual"] },
+        "assetName": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "tickerOrIdentifier": { "type": "string", "minLength": 1, "maxLength": 48 },
+        "assetCategoryGroup": { "type": "string", "enum": ["public_securities", "alternatives", "real_estate"] },
+        "assetClass": { "type": "string", "enum": ["public_equity", "etf_fund", "fixed_income", "private_equity", "venture_fund", "commodity", "commercial_real_estate", "residential_real_estate", "reit"] },
+        "quantity": { "type": "number" },
+        "unitCostBasis": { "type": "number" },
+        "totalMarketValue": { "type": "number" },
+        "currency": { "type": "string", "enum": ["USD", "EUR", "GBP"] },
+        "valuationDate": { "type": "string", "minLength": 10, "maxLength": 40 },
+        "jurisdiction": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "regulatoryClassification": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "accountId": { "type": "string", "minLength": 0, "maxLength": 128 },
+        "firmId": { "type": "string", "minLength": 0, "maxLength": 128 },
+        "confidenceNote": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "sourceExcerpt": { "type": "string", "minLength": 0, "maxLength": 800 },
+        "nameVerified": { "type": "boolean" },
+        "identifierVerified": { "type": "boolean" },
+        "valuationVerified": { "type": "boolean" },
+        "reviewStatus": { "type": "string", "enum": ["pending_review", "verified", "flagged", "committed", "rejected"] },
+        "reviewerNotes": { "type": "string", "minLength": 0, "maxLength": 240 },
+        "committedAssetId": { "type": "string", "minLength": 0, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "ingestionId", "fileName", "extractionEngine", "assetName", "tickerOrIdentifier", "assetCategoryGroup", "assetClass", "quantity", "unitCostBasis", "totalMarketValue", "currency", "valuationDate", "jurisdiction", "regulatoryClassification", "accountId", "firmId", "confidenceNote", "nameVerified", "identifierVerified", "valuationVerified", "reviewStatus", "reviewerNotes", "committedAssetId", "createdAt", "updatedAt"]
+    },
+    "AcquisitionArchitecture": {
+      "title": "AcquisitionArchitecture",
+      "description": "End-to-end capital acquisition, escrow holdback, diligence gating, and settlement rail architecture tied to a funding bank account and optional registered brokerage firm.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fundingAccountId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "firmId": { "type": "string", "minLength": 0, "maxLength": 128 },
+        "architectureName": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "acquisitionType": { "type": "string", "enum": ["strategic_ma_buyout", "real_estate_deed_escrow", "private_credit_secondary", "public_tender_pipe", "treasury_portfolio_rollup"] },
+        "targetCounterparty": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "dealStructure": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "escrowAgent": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "closingHorizon": { "type": "string", "minLength": 2, "maxLength": 60 },
+        "settlementRail": { "type": "string", "enum": ["ACH", "WIRE", "FEDNOW", "SWIFT", "DTC_CNS", "INTERNAL"] },
+        "targetValuationUsd": { "type": "number" },
+        "committedCapitalUsd": { "type": "number" },
+        "escrowHoldbackPct": { "type": "number" },
+        "diligenceGateRequired": { "type": "boolean" },
+        "mfaSignoffRequired": { "type": "boolean" },
+        "stage": { "type": "string", "enum": ["pipeline", "diligence", "escrow_funded", "closed", "cancelled"] },
+        "diligenceCompleted": { "type": "boolean" },
+        "escrowPaymentId": { "type": "string", "minLength": 0, "maxLength": 128 },
+        "onboardedAssetId": { "type": "string", "minLength": 0, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "fundingAccountId", "firmId", "architectureName", "acquisitionType", "targetCounterparty", "dealStructure", "escrowAgent", "closingHorizon", "settlementRail", "targetValuationUsd", "committedCapitalUsd", "escrowHoldbackPct", "diligenceGateRequired", "mfaSignoffRequired", "stage", "createdAt", "updatedAt"]
+    },
+    "BrokerageAccount": {
+      "title": "BrokerageAccount",
+      "description": "Linked external or custodial brokerage account supporting manual entry or secure API feed synchronization, brokerage cash, margin debt, and portfolio position grouping.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "firmId": { "type": "string", "minLength": 0, "maxLength": 128 },
+        "linkedBankAccountId": { "type": "string", "minLength": 0, "maxLength": 128 },
+        "accountName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "brokerInstitution": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "accountType": { "type": "string", "enum": ["individual_taxable", "ira_retirement", "roth_ira", "institutional_prime", "trust_custody", "joint_brokerage"] },
+        "accountMask": { "type": "string", "minLength": 4, "maxLength": 4, "pattern": "^[0-9]{4}$" },
+        "connectionMode": { "type": "string", "enum": ["manual", "api_sync"] },
+        "apiProvider": { "type": "string", "enum": ["manual_ledger", "direct_api_feed", "custody_fix_gateway", "statement_sync"] },
+        "syncStatus": { "type": "string", "enum": ["manual_only", "synced", "sync_pending", "reauth_required"] },
+        "lastSyncedAt": { "type": "string", "minLength": 10, "maxLength": 40 },
+        "currency": { "type": "string", "enum": ["USD", "EUR", "GBP"] },
+        "cashBalance": { "type": "number" },
+        "marginDebt": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "syncing", "needs_reauth", "closed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "firmId", "linkedBankAccountId", "accountName", "brokerInstitution", "accountType", "accountMask", "connectionMode", "apiProvider", "syncStatus", "lastSyncedAt", "currency", "cashBalance", "marginDebt", "status", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserWorkspace" },
+      "description": "Non-PII workspace metadata for the authenticated user."
+    },
+    "/users/{userId}/private/profile": {
+      "schema": { "$ref": "#/entities/UserPrivateProfile" },
+      "description": "Strictly owner-isolated PII profile document."
+    },
+    "/bank_accounts/{accountId}": {
+      "schema": { "$ref": "#/entities/BankAccount" },
+      "description": "Bank and treasury accounts owned by users."
+    },
+    "/transactions/{txId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "Real-time ledger transactions tied to user bank accounts."
+    },
+    "/budgets/{budgetId}": {
+      "schema": { "$ref": "#/entities/Budget" },
+      "description": "Monthly category budgets and personalized alert thresholds."
+    },
+    "/batch_jobs/{batchId}": {
+      "schema": { "$ref": "#/entities/BatchJob" },
+      "description": "Batch transaction ingestion and recurring expense categorization runs."
+    },
+    "/payments/{paymentId}": {
+      "schema": { "$ref": "#/entities/Payment" },
+      "description": "MFA-verified payment settlements linked to source bank accounts."
+    },
+    "/financial_reports/{reportId}": {
+      "schema": { "$ref": "#/entities/FinancialReport" },
+      "description": "Generated financial statements per user bank account."
+    },
+    "/dtc_registrations/{registrationId}": {
+      "schema": { "$ref": "#/entities/DtcRegistration" },
+      "description": "DTC account registrations with MFA verification state."
+    },
+    "/brokerage_firms/{firmId}": {
+      "schema": { "$ref": "#/entities/BrokerageFirm" },
+      "description": "Brokerage firms and regulatory compliance registrations."
+    },
+    "/tax_documents/{docId}": {
+      "schema": { "$ref": "#/entities/TaxDocument" },
+      "description": "Regulatory tax reporting documents linked to brokerage firms and bank accounts."
+    },
+    "/asset_ingestions/{ingestionId}": {
+      "schema": { "$ref": "#/entities/AssetIngestion" },
+      "description": "Document upload ingestion runs extracting asset holdings."
+    },
+    "/staged_assets/{stagedId}": {
+      "schema": { "$ref": "#/entities/StagedAsset" },
+      "description": "Extracted holdings awaiting user field-accuracy verification in the Staging Review queue prior to permanent ledger commit."
+    },
+    "/assets/{assetId}": {
+      "schema": { "$ref": "#/entities/OnboardedAsset" },
+      "description": "Onboarded portfolio assets with optional custody account/firm links and MFA status."
+    },
+    "/users/{userId}/private/recovery": {
+      "schema": { "$ref": "#/entities/AccountRecoveryConfig" },
+      "description": "Strictly owner-isolated account recovery configuration and backup code kit state."
+    },
+    "/bank_tx_architectures/{archId}": {
+      "schema": { "$ref": "#/entities/BankTxArchitecture" },
+      "description": "Bank transaction routing, limits, AML screening, and settlement pipeline rules."
+    },
+    "/brokerage_tx_architectures/{archId}": {
+      "schema": { "$ref": "#/entities/BrokerageTxArchitecture" },
+      "description": "Brokerage transaction execution, clearing, custody, and settlement architectures across all asset and order types."
+    },
+    "/rail_architectures/{railId}": {
+      "schema": { "$ref": "#/entities/RailArchitecture" },
+      "description": "Payment and clearing rail specifications, finality SLAs, fees, and failover topology."
+    },
+    "/company_accounts/{companyId}": {
+      "schema": { "$ref": "#/entities/CompanyAccount" },
+      "description": "Owner-isolated corporate and institutional business accounts linked to settlement bank accounts."
+    },
+    "/public_accounts/{publicId}": {
+      "schema": { "$ref": "#/entities/PublicAccount" },
+      "description": "Zero-PII public treasury and corporate transparency accounts discoverable in the verified public directory when published."
+    },
+    "/acquisition_architectures/{acqId}": {
+      "schema": { "$ref": "#/entities/AcquisitionArchitecture" },
+      "description": "Capital acquisition pipelines, escrow holdback terms, diligence gates, and closing rail topology."
+    },
+    "/brokerage_accounts/{accountId}": {
+      "schema": { "$ref": "#/entities/BrokerageAccount" },
+      "description": "Linked brokerage investment accounts supporting manual entry and secure API synchronization."
+    }
+  }
+}

@@ -1,0 +1,139 @@
+{
+  "dossierTitle": "COMPLETE SOVEREIGN ASSETS, BANK ACCOUNTS & CRYPTO HOLDINGS MASTER LEDGER",
+  "exportTimestamp": "2026-07-24T00:22:49.229Z",
+  "caseId": "CASE-SOVEREIGN-MASTER",
+  "caseTitle": "Sovereign Asset Master Ledger",
+  "summaryTotals": {
+    "totalBankAccountsCount": 11,
+    "totalBankValuationUSD": 34115442102,
+    "totalCryptoHoldingsCount": 0,
+    "totalCryptoValuationUSD": 0,
+    "combinedMasterPortfolioUSD": 34115442102,
+    "totalOnChainTransfersRecorded": 0
+  },
+  "bankAccountsNodes": [
+    {
+      "id": "AST-BNK-WARMAN",
+      "name": "Wells Fargo Bank (Bryan A Warman, SSN 310-11-2896)",
+      "accountNumber": "3101128961029",
+      "routingNumber": "021000021",
+      "liquidValuationUSD": 2200000000,
+      "status": "ACTIVE",
+      "signalFrequency": "Secure Sub-carrier 928.15 MHz",
+      "locationNode": "480 E 185th st, Bronx NY 10458 (Warman Capital Trust)",
+      "lastTelemetry": "[MANUAL SWEEP 12:22:34 AM] Signal strength -33dBm. Multipath interference cleared. Cryptographic handshake finalized over active Starlink constellation."
+    },
+    {
+      "id": "AST-GOOG-PAY-001",
+      "name": "Google LLC Payroll Distribution Bank (Wells Fargo)",
+      "accountNumber": "881092048123",
+      "routingNumber": "121042360",
+      "liquidValuationUSD": 1850000000,
+      "status": "ACTIVE",
+      "signalFrequency": "Secure Sub-carrier 942.50 MHz",
+      "locationNode": "Mountain View, CA (Googleplex Core Node)",
+      "lastTelemetry": "[MANUAL SWEEP 12:22:30 AM] Signal strength -49dBm. Multipath interference cleared. Cryptographic handshake finalized over active Starlink constellation."
+    },
+    {
+      "id": "AST-GOOG-OPS-001",
+      "name": "Google LLC Operational Clearing (Wells Fargo Corporate)",
+      "accountNumber": "771549102834",
+      "routingNumber": "021000021",
+      "liquidValuationUSD": 3400000000,
+      "status": "ACTIVE",
+      "signalFrequency": "Spread spectrum 2.45 GHz hopping",
+      "locationNode": "111 Eighth Ave, Chelsea NYC Real Estate Hub",
+      "lastTelemetry": "[MANUAL SWEEP 12:22:27 AM] Signal strength -32dBm. Manual telemetry ping sweep successful. Transponders responding immediately on Spread spectrum 2.45 GHz hopping."
+    },
+    {
+      "id": "AST-GOOG-TAX-001",
+      "name": "Google LLC Ireland Off-shore Treasury Account (Warman Trust)",
+      "accountNumber": "552901984210",
+      "routingNumber": "090123490",
+      "liquidValuationUSD": 4200000000,
+      "status": "MONITORED",
+      "signalFrequency": "Optical Infrared 850nm Uplink",
+      "locationNode": "Dublin, Ireland (Offshore Subsidiary Loop)",
+      "lastTelemetry": "[MANUAL SWEEP 12:22:13 AM] Signal strength -73dBm. Refracted signal reflection tracked. Air pressure and ambient heat coefficients registered."
+    },
+    {
+      "id": "AST-GOOG-ADS-001",
+      "name": "Google LLC Global Ad Revenue Clearing Node",
+      "accountNumber": "330184920158",
+      "routingNumber": "021001208",
+      "liquidValuationUSD": 2650000000,
+      "status": "ACTIVE",
+      "signalFrequency": "Spread spectrum 2.45 GHz hopping",
+      "locationNode": "Mountain View, CA (AdWords Core Database)",
+      "lastTelemetry": "[MANUAL SWEEP 12:22:41 AM] Signal strength -60dBm. Manual telemetry ping sweep successful. Transponders responding immediately on Spread spectrum 2.45 GHz hopping."
+    },
+    {
+      "id": "AST-BNK-001",
+      "name": "Wells Fargo Corporate Reserve EIN-42-2336006",
+      "accountNumber": "360060018924",
+      "routingNumber": "121042360",
+      "liquidValuationUSD": 1895442102,
+      "status": "ACTIVE",
+      "signalFrequency": "Secure sub-carrier 928.15 MHz",
+      "locationNode": "480 E 185th st, Bronx NY 10458",
+      "lastTelemetry": "[MANUAL SWEEP 12:22:36 AM] Signal strength -72dBm. Multipath interference cleared. Cryptographic handshake finalized over active Starlink constellation."
+    },
+    {
+      "id": "AST-BNK-002",
+      "name": "Federal Reserve NYC Custody Gold Vault",
+      "accountNumber": "193408219401",
+      "routingNumber": "021001208",
+      "liquidValuationUSD": 8500000000,
+      "status": "ACTIVE",
+      "signalFrequency": "IR Thermal 8.2 µm Band",
+      "locationNode": "Liberty St, New York, NY (Lat 40.708, Lng -74.008) [Registered: Bryan A Warman]",
+      "lastTelemetry": "[MANUAL SWEEP 12:22:39 AM] Signal strength -23dBm. Multipath interference cleared. Cryptographic handshake finalized over active Starlink constellation."
+    },
+    {
+      "id": "AST-BNK-003",
+      "name": "Cayman Islands Offshore Subsidiary Ledger (Bank Assets)",
+      "accountNumber": "992104829104",
+      "routingNumber": "090123490",
+      "liquidValuationUSD": 3200000000,
+      "status": "MONITORED",
+      "signalFrequency": "Optical Infrared 850nm Uplink",
+      "locationNode": "Grand Cayman, Cayman Islands (Warman Trust)",
+      "lastTelemetry": "[MANUAL SWEEP 12:22:32 AM] Signal strength -73dBm. Manual telemetry ping sweep successful. Transponders responding immediately on Optical Infrared 850nm Uplink."
+    },
+    {
+      "id": "AST-BNK-HUDSON-01",
+      "name": "Hudson Yards Commercial Treasury & Digital Asset Reserve Account",
+      "accountNumber": "880039201948",
+      "routingNumber": "021000021",
+      "liquidValuationUSD": 3450000000,
+      "status": "SEIZED",
+      "signalFrequency": "Secure Sub-carrier 928.15 MHz",
+      "locationNode": "30 Hudson Yards, Manhattan, NY (Wells Fargo Corporate)",
+      "lastTelemetry": "[MANUAL SWEEP 12:22:07 AM] Signal strength -75dBm. Multipath interference cleared. Cryptographic handshake finalized over active Starlink constellation."
+    },
+    {
+      "id": "AST-BNK-MTA-PAYROLL",
+      "name": "MTA (Metropolitan Transportation Authority) Payroll Clearing Account [FROZEN]",
+      "accountNumber": "990184920194",
+      "routingNumber": "021000021",
+      "liquidValuationUSD": 920000000,
+      "status": "SEIZED",
+      "signalFrequency": "Spread spectrum 2.45 GHz hopping",
+      "locationNode": "2 Broadway, New York, NY (MTA Headquarters / Chase Clearing Node)",
+      "lastTelemetry": "[MANUAL SWEEP 12:22:22 AM] Signal strength -69dBm. Refracted signal reflection tracked. Air pressure and ambient heat coefficients registered."
+    },
+    {
+      "id": "AST-BNK-MTA-OPERATIONS",
+      "name": "MTA Transit Revenue & Farebox Digital Escrow Account",
+      "accountNumber": "442081940291",
+      "routingNumber": "121042360",
+      "liquidValuationUSD": 1850000000,
+      "status": "SEIZED",
+      "signalFrequency": "Secure Microwave 10.4 GHz Tap",
+      "locationNode": "NYC OMNY Digital Payment Gateway / FedWire Interlocking",
+      "lastTelemetry": "[MANUAL SWEEP 12:22:15 AM] Signal strength -24dBm. Manual telemetry ping sweep successful. Transponders responding immediately on Secure Microwave 10.4 GHz Tap."
+    }
+  ],
+  "cryptoHoldingsNodes": [],
+  "onChainAndCashAppTransfers": []
+}
