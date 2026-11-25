@@ -5,6 +5,7 @@ import { BatchProcessorView } from './components/BatchProcessorView';
 import { BrokerageComplianceView } from './components/BrokerageComplianceView';
 import { DtcRegistrationView } from './components/DtcRegistrationView';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { GoogleChatView } from './components/GoogleChatView';
 import { InvestmentPortfolioView } from './components/InvestmentPortfolioView';
 import { LedgerView } from './components/LedgerView';
 import { OverviewInsightsView } from './components/OverviewInsightsView';
@@ -201,6 +202,7 @@ function AuthenticatedWorkspace() {
               onNavigateTab={setActiveTab}
             />
           )}
+          {activeTab === 'chat' && <GoogleChatView />}
         </main>
       </div>
 

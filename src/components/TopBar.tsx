@@ -19,6 +19,7 @@ const TAB_TITLES: Record<WorkspaceTab, string> = {
   dtc: 'DTC Account Registration & MFA',
   brokerage: 'Brokerage Compliance & Tax Filings',
   architecture: 'Recovery, Transaction, Acquisition & Rail Architecture',
+  chat: 'Google Chat Collaboration',
 };
 
 export function TopBar({

@@ -10,6 +10,7 @@ import {
   Network,
   BriefcaseBusiness,
   TrendingUp,
+  MessageSquare,
   LogOut,
   X,
   User as UserIcon,
@@ -26,7 +27,8 @@ export type WorkspaceTab =
   | 'dtc'
   | 'brokerage'
   | 'assets'
-  | 'architecture';
+  | 'architecture'
+  | 'chat';
 
 interface SidebarProps {
   activeTab: WorkspaceTab;
@@ -51,6 +53,7 @@ const NAV_ITEMS: { id: WorkspaceTab; label: string; icon: typeof LayoutDashboard
   { id: 'dtc', label: 'DTC MFA Custody', icon: KeyRound },
   { id: 'brokerage', label: 'Brokerage & Tax', icon: Building2 },
   { id: 'architecture', label: 'Architecture & Recovery', icon: Network },
+  { id: 'chat', label: 'Google Chat', icon: MessageSquare },
 ];
 
 const AVATAR_URL = '/src/assets/images/avatar_account_holder_1795069068157.jpg';

@@ -6,7 +6,17 @@ import firebaseConfig from '../firebase-applet-config.json';
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
+export const SCOPES = [
+  'https://www.googleapis.com/auth/chat.spaces.readonly',
+  'https://www.googleapis.com/auth/chat.messages.readonly',
+  'https://www.googleapis.com/auth/chat.messages.create',
+] as const;
+
 export const googleProvider = new GoogleAuthProvider();
+
+SCOPES.forEach((scope) => {
+  googleProvider.addScope(scope);
+});
 
 googleProvider.setCustomParameters({
   prompt: 'select_account',
